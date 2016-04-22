@@ -13,7 +13,7 @@
   "author": "Kir Peremenov",
   "license": "MIT",
   "dependencies": {
-    "lodash": "4.0.8"
+    "lodash": "4.11.1"
   },
   "devDependencies": {
     "chai": "^3.5.0",

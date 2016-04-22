@@ -1,0 +1,152 @@
+var Seize  = require('..'),
+    jsdom  = require('jsdom').jsdom,
+    assert = require('chai').assert,
+    path   = require('path'),
+    fs     = require('fs');
+
+var jsdomOptions = {
+  features: {
+    FetchExternalResources: [],
+    ProcessExternalResources: false
+  }
+};
+
+var testCases = [
+  // {
+  //   name: 'cnet_list',
+  //   content: null,
+  //   url: 'http://www.cnet.com/topics/appliances/how-to/'
+  // },
+  // {
+  //   name: 'forbes',
+  //   content: /Blockchain will do for business transactions what([.\s\S]*)Facebook of the transaction universe/g,
+  //   url: 'http://www.forbes.com/sites/sap/2016/04/22/blockchain-digital-business-disruptor-or-doomed-to-oblivion/'
+  // },
+  {
+    name: 'cnet_main',
+    content: null,
+    url: 'http://www.cnet.com/'
+  },
+  {
+    name: 'cnet_article',
+    content: /The new dome-shaped Beoplay A1 is not only  the smallest wireless speaker from the Danish company/,
+    url: 'http://www.cnet.com/products/b-o-play-beoplay-a1-portable-bluetooth-speaker/'
+  },
+  {
+    name: 'rbc_article',
+    content: /Правительство обнародовало постановление([.\s\S]*)июля 2014 года/g,
+    url: 'http://www.rbc.ru/politics/22/04/2016/5719babc9a79475f3aab6096'
+  },
+  {
+    name: 'medportal_article',
+    content: /В Крыму истек([.\s\S]*)разбирательство уже началось/g,
+    url: 'http://medportal.ru/mednovosti/news/2016/04/21/647insuline/'
+  },
+  {
+    name: 'meddaily_article',
+    content: /Новая генная терапия способна помочь детям и молодым людям с тяжелым наследственным иммунодефицитом/g,
+    url: 'http://meddaily.ru/article/22apr2016/il2rg'
+  },
+  {
+    name: 'novate_article',
+    content: /Чтобы куриные ножки получились сочными([.\s\S]*)Подавайте в теплом виде с лимоном/g,
+    url: 'http://www.novate.ru/blogs/220416/36050/'
+  },
+  {
+    name: 'varlamov_article',
+    content: /А-А-А-А-А-А([.\s\S]*)Ох/g,
+    url: 'http://varlamov.ru/1659825.html'
+  },
+  {
+    name: 'newsru_article',
+    content: /Мурманска в Москву([.\s\S]*)ущерб оценивается/g,
+    url: '' // can't detect (no link on page)
+  },
+  {
+    name: 'lenta_article',
+    content: /Банки могут получить разрешение на выдачу потребительских безналичных ([.\s\S]*)общественных организаций/g,
+    url: 'https://lenta.ru/news/2016/04/22/mobilcredits/'
+  },
+  {
+    name: 'iphonehacks',
+    content: /Apple co-founder ([.\s\S]*)via the link below/g,
+    url: 'http://www.iphonehacks.com/2016/04/steve-wozniak-believes-apple-should-pay-same-50-tax-rate-he-does.html'
+  },
+  {
+    name: 'buzzfeed',
+    content: /When Tania Rodriguez got dressed for work([.\s\S]*)noting that five planets are in retrograde this month/g,
+    url: 'https://www.buzzfeed.com/tamerragriffin/heres-how-brooklyn-celebrated-princes-life'
+  },
+  {
+    name: 'sheknows',
+    content: /Many of us have woken in the morning to find we([.\s\S]*)ascites and other intestinal tumors/g,
+    url: 'http://www.sheknows.com/health-and-wellness/articles/1117959/causes-of-bloating'
+  },
+  {
+    name: 'carscoops',
+    content: /Audi has performed a series of visual and technical updates([.\s\S]*)with deliveries to begin this summer/g,
+    url: 'http://www.carscoops.com/2016/04/audi-updates-a6-and-a7-for-2017my.html'
+  },
+
+];
+
+describe('Seize', function() {
+
+  it('should throw error (empty argument)', function() {
+    assert.throws(function() {
+      new Seize();
+    }, /Argument must be/);
+  });
+
+  it('should throw error (string argument)', function() {
+    assert.throws(function() {
+      new Seize(' ');
+    }, /querySelectorAll|querySelector/);
+  });
+
+  it('should throw error (array argument)', function() {
+    assert.throws(function() {
+      new Seize([]);
+    }, /querySelectorAll|querySelector/);
+  });
+
+  testCases.forEach(function(test) {
+    var pageFile = test.name + '.html',
+        pagePath = path.join(__dirname, 'pages', pageFile),
+        testContent = test.content;
+
+    var content = fs.readFileSync(pagePath, 'utf8'),
+        window = jsdom(content, jsdomOptions).defaultView,
+        seize;
+
+    describe('Run ' + test.name, function() {
+      this.timeout(10000);
+
+      it('should init without errors', function() {
+        seize = new Seize(window.document, {
+          // debug: console.log
+        });
+      });
+
+      it('testing content', function() {
+        if ( testContent instanceof String ) {
+          assert.equal( testContent, seize.text() );
+        } else if ( testContent instanceof RegExp ) {
+          assert.ok( testContent.test(seize.text()) );
+        } else {
+          assert.equal( testContent, seize.content() );
+        }
+      });
+
+      if ( test.url )
+        it('should detect page link', function() {
+          assert.equal(test.url, seize.url);
+        });
+
+      after(function() {
+        seize = null;
+      });
+    });
+
+  });
+});

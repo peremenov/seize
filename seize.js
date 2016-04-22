@@ -2,7 +2,7 @@
 
 var url    = require('url'),
     extend = require('lodash/extend'),
-    sort   = require('lodash/sortby');
+    sort   = require('lodash/sortBy');
 
 var removeElementsList  = 'style,script,form,object,embed,link,form,button,input,label';
 var removeAttributesRe  = /^on|^id$|^class|^data-|^style/;

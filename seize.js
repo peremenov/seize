@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 var url    = require('url'),
     extend = require('lodash/extend'),
@@ -17,9 +17,7 @@ var contentLeaveNodes   = 'br,hr,img';
 var elementLinksMap = {
   'a'     : 'href',
   'area'  : 'href',
-  'img'   : 'src',
-  'img'   : 'usemap',
-  'img'   : 'longdesc',
+  'img'   : [ 'src', 'usemap', 'longdesc' ],
   'iframe': 'src',
   // 'input' : 'src',    // don't need forms
   // 'form'  : 'action', // don't need forms
@@ -27,8 +25,7 @@ var elementLinksMap = {
   'ins'   : 'cite',
   'blockquote': 'cite',
   'q'     : 'cite',
-  'video' : 'src',
-  'video' : 'poster',
+  'video' : [ 'src', 'poster' ],
   'source': 'src'
 };
 var minCandidateNodes = 2;
@@ -88,7 +85,7 @@ function getXPath(element) {
  * @param  {String} xpath Xpath string
  * @return {Number}       score
  */
-function getXPathScore(xpath) {
+var getXPathScore = function(xpath) {
   var depth    = xpath.split('/').length,
       distance = xpath.match(/\[(\d+)\]/g);
 
@@ -106,17 +103,15 @@ function getXPathScore(xpath) {
   };
 };
 
-
 var checkParentNodeScore = function(node) {
   if ( node )
     return checkNodeScore(node.parentNode);
   return 0;
-}
+};
 
 var checkNodeScore = function(node) {
   var xPathScore = getXPathScore(getXPath(node)),
       depth    = xPathScore.depth,
-      distance = xPathScore.distance,
       score = 0;
 
   if ( !node || !node.parentNode )
@@ -129,7 +124,7 @@ var checkNodeScore = function(node) {
     score -= depth * depthFactor;
 
   return score + checkParentNodeScore(node);
-}
+};
 
 var setNodeScore = function (node) {
   var xpathScore       = getXPathScore(getXPath(node));
@@ -137,12 +132,12 @@ var setNodeScore = function (node) {
   node.seize.depth     = xpathScore.depth;
   node.seize.nodeScore += nodeScore - xpathScore.depth * xpathScore.distance;
   return node;
-}
+};
 
 var setTextScore = function (node) {
   node.seize.textScore = node.textContent.length;
   return node;
-}
+};
 
 var cleanUp = function(node) {
   for(var n = node.childNodes.length - 1; n >= 0; n--) {
@@ -155,7 +150,7 @@ var cleanUp = function(node) {
       cleanUp(child);
     }
   }
-}
+};
 
 /**
  * Seize object
@@ -178,7 +173,7 @@ var Seize = function(doc, options) {
 
   self.log( 'xpath   ', getXPath(self.article) );
   self.log( 'article ', self.article && self.article.outerHTML );
-}
+};
 /**
  * Log events by function defined in `options.log`
  * @return {Void}
@@ -187,7 +182,7 @@ Seize.prototype.log = function () {
   var self = this;
   if ( self.options.log instanceof Function )
     self.options.log.apply(self, arguments);
-}
+};
 
 /**
  * Tries determine document url with `link[rel="canonical"]` or `meta[property="og:url"]` tags
@@ -196,17 +191,19 @@ Seize.prototype.log = function () {
 Seize.prototype.getPageUrl = function () {
   var self = this,
       doc  = self.doc,
-      el = null;
+      el = doc.querySelector('link[rel="canonical"]');
 
-  if ( el = doc.querySelector('link[rel="canonical"]') )
+  if ( el )
     return el.getAttribute('href');
   else {
-    if ( el = doc.querySelector('meta[property="og:url"]') )
+    el = doc.querySelector('meta[property="og:url"]');
+
+    if ( el )
       return el.getAttribute('content');
   }
 
   return '';
-}
+};
 
 /**
  * Resolves relative links, clean up JavaScript links
@@ -223,7 +220,7 @@ Seize.prototype.resolveUrl = function(path) {
     return '';
 
   return url.resolve(u, path);
-}
+};
 
 /**
  * Returns clean text
@@ -231,7 +228,7 @@ Seize.prototype.resolveUrl = function(path) {
  */
 Seize.prototype.text = function () {
   return this.article.textContent;
-}
+};
 
 /**
  * Returns document title text or content of first "h1,h2,h3" tag
@@ -240,7 +237,7 @@ Seize.prototype.text = function () {
 Seize.prototype.title = function () {
   var self = this;
   return self.doc.title || self.article.querySelector('h1,h2,h3').textContent || '';
-}
+};
 
 /**
  * Prepares content node: cleans up attributes, empties nodes, resolves URLs
@@ -248,24 +245,25 @@ Seize.prototype.title = function () {
  * @return {Node}           ready article
  */
 Seize.prototype.prepareContent = function (article) {
-  var removeNodes = article.querySelectorAll(removeElementsList),
+  var self = this,
+      removeNodes = article.querySelectorAll(removeElementsList),
       resolveUrlNodes = article.querySelectorAll(Object.keys(elementLinksMap).join(',')),
       allNodes = article.querySelectorAll('*'),
-      node, attr, url;
+      node, attr, url, i, j;
 
-  for ( var i in removeNodes )
+  for ( i in removeNodes )
     removeNodes[i].remove();
 
-  for ( var j in article.attributes ) {
+  for ( j in article.attributes ) {
     attr = article.attributes[j].nodeName;
     if ( removeAttributesRe.test(attr) ) {
       article.removeAttribute(attr);
     }
   }
 
-  for ( var i in allNodes ) {
+  for ( i in allNodes ) {
     node = allNodes[i];
-    for ( var j in node.attributes ) {
+    for ( j in node.attributes ) {
       attr = node.attributes[j].nodeName;
       if ( removeAttributesRe.test(attr) ) {
         node.removeAttribute(attr);
@@ -273,17 +271,22 @@ Seize.prototype.prepareContent = function (article) {
     }
   }
 
-  for ( var i in resolveUrlNodes ) {
+  for ( i in resolveUrlNodes ) {
     node = resolveUrlNodes[i];
     attr = elementLinksMap[node.tagName.toLowerCase()];
     url  = node.getAttribute(attr);
-    node.setAttribute( attr, this.resolveUrl(url) );
+    if ( attr instanceof Array ) {
+      attr.map(function(attr) {
+        node.setAttribute( attr, self.resolveUrl(attr) );
+      });
+    } else
+      node.setAttribute( attr, self.resolveUrl(url) );
   }
 
   cleanUp(article);
 
   return article;
-}
+};
 
 /**
  * Returns node that most likely has a content or null if content is inacessible
@@ -291,7 +294,6 @@ Seize.prototype.prepareContent = function (article) {
  */
 Seize.prototype.content = function () {
   var self = this,
-      window = self.window,
       result;
 
   if ( self.article ) {
@@ -334,12 +336,13 @@ Seize.prototype.content = function () {
     return node.seize.nodeScore == maxNodeScore;
   });
 
-  if ( self.options.log )
+  if ( self.options.log ) {
+    self.log( 'candidates ' );
     candidates.forEach(function(node) {
-      self.log( 'candidates ' );
       self.log( 'xpath      ', getXPath(node) );
       self.log( 'article    ', self.article && self.article.outerHTML );
     });
+  }
 
   if ( maxNodeScoreCandidates.length != 1 ) {
     return null;
@@ -356,6 +359,6 @@ Seize.prototype.content = function () {
   }
 
   return self.prepareContent(result);
-}
+};
 
 module.exports = Seize;

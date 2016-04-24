@@ -1,14 +1,14 @@
 {
   "name": "seize",
-  "version": "0.1.0",
-  "description": "Seize is light Node or Browser content extractor inspired by arc90 readability and Safari Reader",
+  "version": "0.1.1",
+  "description": "Seize is light Node or Browser web-page content extractor inspired by arc90 readability and Safari Reader",
   "main": "seize.js",
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha -R spec"
+    "test": "./node_modules/eslint/bin/eslint.js seize.js && ./node_modules/mocha/bin/mocha -R spec"
   },
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/peremenov/seize.git"
+    "type": "git",
+    "url": "https://github.com/peremenov/seize.git"
   },
   "author": "Kir Peremenov",
   "license": "MIT",
@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "chai": "^3.5.0",
+    "eslint": "^2.8.0",
     "jsdom": "^8.4.0",
     "mocha": "^2.4.5"
   }

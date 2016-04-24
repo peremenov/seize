@@ -2,7 +2,7 @@
 
 <!-- ## [по-русски](./readme.ru.md) -->
 
-Seize is light Node or Browser content extractor inspired by [arc90 readability](http://www.arc90.com/work/readability/) and Safari Reader.
+Seize is light Node or Browser web-page content extractor inspired by [arc90 readability](http://www.arc90.com/work/readability/) and Safari Reader.
 
 ## Install
 
@@ -20,11 +20,11 @@ Seize can be used with DOM libraries such as [jsdom](https://github.com/tmpvar/j
 var Seize = require('seize'),
     jsdom = require('jsdom').jsdom;
 
-var window = jsdom('<your html here>', jsdomOptions).defaultView,
+var window = jsdom('<your html here>').defaultView,
     seize  = new Seize(window.document);
 
 seize.content(); // returns DOM-node
-seize.text();    // returns only text without formatting
+seize.text();    // returns only text
 ```
 
 

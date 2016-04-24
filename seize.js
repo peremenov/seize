@@ -276,8 +276,8 @@ Seize.prototype.prepareContent = function (article) {
     attr = elementLinksMap[node.tagName.toLowerCase()];
     url  = node.getAttribute(attr);
     if ( attr instanceof Array ) {
-      attr.map(function(attr) {
-        node.setAttribute( attr, self.resolveUrl(attr) );
+      attr.forEach(function(attr) {
+        node.setAttribute( attr, self.resolveUrl(url) );
       });
     } else
       node.setAttribute( attr, self.resolveUrl(url) );

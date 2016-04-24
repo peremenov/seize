@@ -110,6 +110,40 @@ describe('Seize', function() {
     }, /querySelectorAll|querySelector/);
   });
 
+  describe('Resolve url', function () {
+    it('relative url', function() {
+      var resolveUrl = Seize.prototype.resolveUrl;
+      var result = resolveUrl.call({
+        url: 'http://example.com/123/'
+      }, 'image.jpg');
+      assert.equal('http://example.com/123/image.jpg', result);
+    });
+
+    it('absolute url', function() {
+      var resolveUrl = Seize.prototype.resolveUrl;
+      var result = resolveUrl.call({
+        url: 'http://example.com/123/'
+      }, '/image.jpg');
+      assert.equal('http://example.com/image.jpg', result);
+    });
+
+    it('url from another source', function() {
+      var resolveUrl = Seize.prototype.resolveUrl;
+      var result = resolveUrl.call({
+        url: 'http://example.com/123/'
+      }, 'http://example2.com/image.jpg');
+      assert.equal('http://example2.com/image.jpg', result);
+    });
+
+    it('javascript url', function() {
+      var resolveUrl = Seize.prototype.resolveUrl;
+      var result = resolveUrl.call({
+        url: 'http://example.com/123/'
+      }, 'javascript:alert("Yeah!")');
+      assert.equal('', result);
+    });
+  });
+
   testCases.forEach(function(test) {
     var pageFile = test.name + '.html',
         pagePath = path.join(__dirname, 'pages', pageFile),

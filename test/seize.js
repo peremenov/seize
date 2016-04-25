@@ -22,10 +22,22 @@ var testCases = [
   //   content: /Blockchain will do for business transactions what([.\s\S]*)Facebook of the transaction universe/g,
   //   url: 'http://www.forbes.com/sites/sap/2016/04/22/blockchain-digital-business-disruptor-or-doomed-to-oblivion/'
   // },
+  // {
+  //   name: 'cnet_main',
+  //   content: null,
+  //   url: 'http://www.cnet.com/'
+  // },
   {
-    name: 'cnet_main',
-    content: null,
-    url: 'http://www.cnet.com/'
+    name: 'test_url',
+    content: `<article><img src="http://example.com/image.gif" alt=""><a href="http://example.com/cat/"><img src="http://example2.com/image.gif" alt=""></a><img src="http://example.com/cat/111/image.gif" alt=""><a href="http://example.com/cat/post2"><img src="http://example.com/cat/image.gif" alt=""></a><a href="#hash-link">Link content</a><h1><a href="">JS link text</a>. Common text.</h1><p>Wow! <a href="http://example3.com/">Protocol link text</a>. New paragraph.</p></article>`,
+    url: 'http://example.com/cat/post',
+    title: 'Document'
+  },
+  {
+    name: 'test_h',
+    content: 'This is a titleContent',
+    url: 'http://example.com',
+    title: 'This is a title'
   },
   {
     name: 'cnet_article',
@@ -163,14 +175,23 @@ describe('Seize', function() {
       });
 
       it('testing content', function() {
-        if ( testContent instanceof String ) {
-          assert.equal( testContent, seize.text() );
+        if ( typeof testContent == 'string' ) {
+          if ( testContent.indexOf('<') == 0 ) {
+            assert.equal( testContent, seize.content().outerHTML );
+          } else {
+            assert.equal( testContent, seize.text() );
+          }
         } else if ( testContent instanceof RegExp ) {
           assert.ok( testContent.test(seize.text()) );
         } else {
           assert.equal( testContent, seize.content() );
         }
       });
+
+      if ( test.title )
+        it('sould detect page title', function() {
+          assert.equal(test.title, seize.title());
+        });
 
       if ( test.url )
         it('should detect page link', function() {

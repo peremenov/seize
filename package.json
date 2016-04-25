@@ -1,16 +1,19 @@
 {
   "name": "seize",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Seize is light Node or Browser web-page content extractor inspired by arc90 readability and Safari Reader",
   "main": "seize.js",
   "scripts": {
-    "test": "./node_modules/eslint/bin/eslint.js seize.js && ./node_modules/mocha/bin/mocha -R spec"
+    "test": "./node_modules/mocha/bin/mocha -R spec",
+    "lint": "./node_modules/eslint/bin/eslint.js seize.js"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/peremenov/seize.git"
   },
-  "author": "Kir Peremenov",
+  "author": [
+    "Kir Peremenov <kirill@peremenov.com> (https://peremenov.com)"
+  ],
   "license": "MIT",
   "dependencies": {
     "lodash": "4.11.1"
@@ -20,5 +23,17 @@
     "eslint": "^2.8.0",
     "jsdom": "^8.4.0",
     "mocha": "^2.4.5"
-  }
+  },
+  "keywords": [
+    "dom",
+    "html",
+    "extract",
+    "extractor",
+    "document",
+    "text",
+    "significant part",
+    "content",
+    "readability",
+    "reader"
+  ]
 }

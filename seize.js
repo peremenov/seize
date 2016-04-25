@@ -5,13 +5,14 @@ var url    = require('url'),
     sort   = require('lodash/sortBy');
 
 var removeElementsList  = 'style,script,form,object,embed,link,form,button,input,label';
-var removeAttributesRe  = /^on|^id$|^class|^data-|^style/;
+var removeAttributesRe  = /^on|^id$|^class|^data-|^style/i;
 var containersUpScoreRe = /article|body|content|page|post|text|main|entry/ig;
 var containersUpScoreSe = 'article,[itemprop="articleBody"],[itemtype="http://www.schema.org/NewsArticle"]';
 var containersDnScoreRe = /counter|image|breadcrumb|combx|comment|contact|disqus|foot|footer|footnote|link|media|meta|mod-conversations|promo|related|scroll|share|shoutbox|sidebar|social|sponsor|tags|toolbox|widget|about/ig;
 var containersDnScoreSe = 'footer,aside,header,nav,menu,ul,a,p';
-var containersNotExpect = 'body,script,dl,ul,ul,img,h1,h2,h3,h4,h5,h6,hr,br,figure,a,blockquote';
-var contentExpect       = 'p,dl,ul,ul,img,table,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time';
+var containersNotExpect = 'body,script,dl,ul,ol,h1,h2,h3,h4,h5,h6,figure,a,blockquote';
+var contentExpect       = 'p,dl,ul,ol,img,table,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time';
+var contentHeadersSe    = 'h1,h2,h3,h4,h5,h6';
 var contentNotExpect    = 'footer,header,nav,article,section';
 var contentLeaveNodes   = 'br,hr,img';
 var elementLinksMap = {
@@ -29,11 +30,11 @@ var elementLinksMap = {
   'source': 'src'
 };
 var minCandidateNodes = 2;
-var minCandidateNodeScore = 0;
-var minCandidateTextScore = 100;
+var minCandidateTotalScore = 0;
+var minCandidateTextScore = 30;
 
-var depthFactor = 3;
-var defaultNodeScore = 1;
+var depthFactor = 1;
+var defaultNodeScore = 40;
 
 var defaultOptions = {
   /**
@@ -109,10 +110,15 @@ var checkParentNodeScore = function(node) {
   return 0;
 };
 
+/**
+ * Setting node score recursively. Closer nodes should more impact to score.
+ * @param  {Node} node   target DOM-node
+ * @return {Number}      score number
+ */
 var checkNodeScore = function(node) {
   var xPathScore = getXPathScore(getXPath(node)),
-      depth    = xPathScore.depth,
-      score = 0;
+      depth      = xPathScore.depth,
+      score      = 0;
 
   if ( !node || !node.parentNode )
     return score;
@@ -139,6 +145,10 @@ var setTextScore = function (node) {
   return node;
 };
 
+/**
+ * Cleaning up empty nodes recursively
+ * @param  {Node} node  target DOM-node
+ */
 var cleanUp = function(node) {
   for(var n = node.childNodes.length - 1; n >= 0; n--) {
     var child = node.childNodes[n];
@@ -227,6 +237,8 @@ Seize.prototype.resolveUrl = function(path) {
  * @return {String} clean text of readable article
  */
 Seize.prototype.text = function () {
+  if ( !this.article )
+    return '';
   return this.article.textContent;
 };
 
@@ -235,8 +247,15 @@ Seize.prototype.text = function () {
  * @return {String} title text
  */
 Seize.prototype.title = function () {
-  var self = this;
-  return self.doc.title || self.article.querySelector('h1,h2,h3').textContent || '';
+  var self = this, node;
+  if ( self.doc.title )
+    return self.doc.title;
+  else {
+    node = self.article.querySelector(contentHeadersSe);
+    if ( node )
+      return node.textContent;
+  }
+  return '';
 };
 
 /**
@@ -249,38 +268,41 @@ Seize.prototype.prepareContent = function (article) {
       removeNodes = article.querySelectorAll(removeElementsList),
       resolveUrlNodes = article.querySelectorAll(Object.keys(elementLinksMap).join(',')),
       allNodes = article.querySelectorAll('*'),
-      node, attr, url, i, j;
+      node, attr, i, j;
 
-  for ( i in removeNodes )
-    removeNodes[i].remove();
+  var setAttribute = function(attr, node) {
+    var url = node.getAttribute(attr);
+    if ( url )
+      node.setAttribute( attr, self.resolveUrl(url) );
+  };
 
-  for ( j in article.attributes ) {
-    attr = article.attributes[j].nodeName;
-    if ( removeAttributesRe.test(attr) ) {
-      article.removeAttribute(attr);
-    }
+  var removeAttribute = function(attr, node) {
+    if ( removeAttributesRe.test(attr) )
+      node.removeAttribute(attr);
+  };
+
+  for ( i in removeNodes ) {
+    removeNodes[i].parentNode.removeChild(removeNodes[i]);
   }
+
+  for ( j in article.attributes )
+    removeAttribute(article.attributes[j].nodeName, article);
 
   for ( i in allNodes ) {
     node = allNodes[i];
-    for ( j in node.attributes ) {
-      attr = node.attributes[j].nodeName;
-      if ( removeAttributesRe.test(attr) ) {
-        node.removeAttribute(attr);
-      }
-    }
+    for ( j in node.attributes )
+      removeAttribute(node.attributes[j].nodeName, node);
   }
 
   for ( i in resolveUrlNodes ) {
     node = resolveUrlNodes[i];
     attr = elementLinksMap[node.tagName.toLowerCase()];
-    url  = node.getAttribute(attr);
     if ( attr instanceof Array ) {
       attr.forEach(function(attr) {
-        node.setAttribute( attr, self.resolveUrl(url) );
+        setAttribute(attr, node);
       });
     } else
-      node.setAttribute( attr, self.resolveUrl(url) );
+      setAttribute(attr, node);
   }
 
   cleanUp(article);
@@ -289,7 +311,7 @@ Seize.prototype.prepareContent = function (article) {
 };
 
 /**
- * Returns node that most likely has a content or null if content is inacessible
+ * Returns node that most likely has a content. Returns null if content is inacessible
  * @return {(Node|null)} returns node with article or null
  */
 Seize.prototype.content = function () {
@@ -326,14 +348,23 @@ Seize.prototype.content = function () {
     .map(setNodeScore)
     .map(setTextScore)
     .filter(function(node) {
-      return node.seize.nodeScore >= minCandidateNodeScore || node.seize.textScore >= minCandidateTextScore;
+      return node.seize.textScore >= minCandidateTextScore;
     });
 
   var maxNodeScore = candidates.reduce(function(score, node) {
     return Math.max(node.seize.nodeScore, score);
   }, 0);
-  var maxNodeScoreCandidates = candidates.filter(function(node) {
-    return node.seize.nodeScore == maxNodeScore;
+
+  var maxTextScore = candidates.reduce(function(score, node) {
+    return Math.max(node.seize.textScore, score);
+  }, 0);
+
+  candidates = candidates.map(function(node) {
+    node.seize.textScore = node.seize.textScore / maxTextScore;
+    node.seize.nodeScore = node.seize.nodeScore / maxNodeScore;
+    return node;
+  }).filter(function(node) {
+    return node.seize.nodeScore * node.seize.textScore > minCandidateTotalScore;
   });
 
   if ( self.options.log ) {
@@ -344,20 +375,14 @@ Seize.prototype.content = function () {
     });
   }
 
-  if ( maxNodeScoreCandidates.length != 1 ) {
+  if ( !candidates.length )
     return null;
-  } else {
-    candidates = sort(candidates, function(node) {
-      return -(node.seize.nodeScore + node.seize.textScore);
-    });
 
-    if ( candidates[0].seize.nodeScore > maxNodeScoreCandidates[0].seize.nodeScore ) {
-      result = candidates[0];
-    } else {
-      result = maxNodeScoreCandidates[0];
-    }
-  }
+  candidates = sort(candidates, function(node) {
+    return -(node.seize.nodeScore * node.seize.textScore);
+  });
 
+  result = candidates[0];
   return self.prepareContent(result);
 };
 

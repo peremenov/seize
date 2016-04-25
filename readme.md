@@ -1,5 +1,10 @@
 # seize
 
+[![Build Status](https://travis-ci.org/peremenov/seize.svg?branch=master)](https://travis-ci.org/peremenov/seize)
+[![Dependency Status](https://www.versioneye.com/user/projects/571e32a0fcd19a00454422f0/badge.svg?style=flat)](https://www.versioneye.com/user/projects/571e32a0fcd19a00454422f0)
+
+---
+
 <!-- ## [по-русски](./readme.ru.md) -->
 
 Seize is light Node or Browser web-page content extractor inspired by [arc90 readability](http://www.arc90.com/work/readability/) and Safari Reader.
@@ -47,7 +52,7 @@ function HTMLParser(html){
 
 ## How it works
 
-Here is simple algorythm how it works:
+Here is algorythm how it works:
 
 * Getting html tags that we expect to be text or content container such as `p`, `table`, `img`, etc.
 * Filtering unnesessary tags by content and tag names wich defenantly can't be in a content container
@@ -59,8 +64,11 @@ Here is simple algorythm how it works:
 
 ## Todo
 
+**Seize still in development, so you can use it at one's own risk**. You always can help to improve it.
+
 - Improve readme
-- Detect pages wich can't be extracted
+- Improve text scoring
+- Improve page detection wich can't be extracted
 - More tests
 - More examples
 

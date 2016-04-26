@@ -9,7 +9,7 @@ var removeAttributesRe  = /^on|^id$|^class|^data-|^style/i;
 var containersUpScoreRe = /article|body|content|page|post|text|main|entry/ig;
 var containersUpScoreSe = 'article,[itemprop="articleBody"],[itemtype="http://www.schema.org/NewsArticle"]';
 var containersDnScoreRe = /counter|image|breadcrumb|combx|comment|contact|disqus|foot|footer|footnote|link|media|meta|mod-conversations|promo|related|scroll|share|shoutbox|sidebar|social|sponsor|tags|toolbox|widget|about/ig;
-var containersDnScoreSe = 'footer,aside,header,nav,menu,ul,a,p';
+var containersDnScoreSe = 'footer,aside,header,nav,menu,ul,a,p,[itemprop="comment"],[itemtype="http://schema.org/Comment"]';
 var containersNotExpect = 'body,script,dl,ul,ol,h1,h2,h3,h4,h5,h6,figure,a,blockquote';
 var contentExpect       = 'p,dl,ul,ol,img,table,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time';
 var contentHeadersSe    = 'h1,h2,h3,h4,h5,h6';

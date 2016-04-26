@@ -28,8 +28,13 @@ var testCases = [
   //   url: 'http://www.cnet.com/'
   // },
   {
+    name: 'test_attr',
+    content: '<article><p>Some text</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit</p></article>',
+    title: 'Document'
+  },
+  {
     name: 'test_url',
-    content: `<article><img src="http://example.com/image.gif" alt=""><a href="http://example.com/cat/"><img src="http://example2.com/image.gif" alt=""></a><img src="http://example.com/cat/111/image.gif" alt=""><a href="http://example.com/cat/post2"><img src="http://example.com/cat/image.gif" alt=""></a><a href="#hash-link">Link content</a><h1><a href="">JS link text</a>. Common text.</h1><p>Wow! <a href="http://example3.com/">Protocol link text</a>. New paragraph.</p></article>`,
+    content: '<article><img src="http://example.com/image.gif" alt=""><a href="http://example.com/cat/"><img src="http://example2.com/image.gif" alt=""></a><img src="http://example.com/cat/111/image.gif" alt=""><a href="http://example.com/cat/post2"><img src="http://example.com/cat/image.gif" alt=""></a><a href="#hash-link">Link content</a><h1><a href="">JS link text</a>. Common text.</h1><p>Wow! <a href="http://example3.com/">Protocol link text</a>. New paragraph.</p></article>',
     url: 'http://example.com/cat/post',
     title: 'Document'
   },
@@ -174,7 +179,7 @@ describe('Seize', function() {
         });
       });
 
-      it('testing content', function() {
+      it('sould extract content', function() {
         if ( typeof testContent == 'string' ) {
           if ( testContent.indexOf('<') == 0 ) {
             assert.equal( testContent, seize.content().outerHTML );

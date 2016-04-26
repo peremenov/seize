@@ -268,7 +268,7 @@ Seize.prototype.prepareContent = function (article) {
       removeNodes = article.querySelectorAll(removeElementsList),
       resolveUrlNodes = article.querySelectorAll(Object.keys(elementLinksMap).join(',')),
       allNodes = article.querySelectorAll('*'),
-      node, attr, i, j;
+      node, attr, i, j, l;
 
   var setAttribute = function(attr, node) {
     var url = node.getAttribute(attr);
@@ -277,24 +277,24 @@ Seize.prototype.prepareContent = function (article) {
   };
 
   var removeAttribute = function(attr, node) {
-    if ( removeAttributesRe.test(attr) )
+    if ( attr && removeAttributesRe.test(attr) )
       node.removeAttribute(attr);
   };
 
-  for ( i in removeNodes ) {
+  for ( i = removeNodes.length-1; i >= 0; i-- ) {
     removeNodes[i].parentNode.removeChild(removeNodes[i]);
   }
 
-  for ( j in article.attributes )
-    removeAttribute(article.attributes[j].nodeName, article);
+  for ( i = article.attributes.length-1; i >= 0; i-- )
+    removeAttribute(article.attributes[i].nodeName, article);
 
-  for ( i in allNodes ) {
+  for ( i = allNodes.length-1; i >= 0; i-- ) {
     node = allNodes[i];
-    for ( j in node.attributes )
+    for ( j = node.attributes.length-1; j >= 0; j-- )
       removeAttribute(node.attributes[j].nodeName, node);
   }
 
-  for ( i in resolveUrlNodes ) {
+  for ( i = 0, l = resolveUrlNodes.length; i < l; i++ ) {
     node = resolveUrlNodes[i];
     attr = elementLinksMap[node.tagName.toLowerCase()];
     if ( attr instanceof Array ) {

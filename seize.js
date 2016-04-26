@@ -316,7 +316,7 @@ Seize.prototype.prepareContent = function (article) {
  */
 Seize.prototype.content = function () {
   var self = this,
-      result;
+      result, i, l;
 
   if ( self.article ) {
     return self.article;
@@ -325,8 +325,10 @@ Seize.prototype.content = function () {
   var contentNodes = self.doc.querySelectorAll(contentExpect),
       candidates = [];
 
-  for ( var index in contentNodes )
-    candidates.push(contentNodes[index].parentNode);
+  for ( i = 0, l = contentNodes.length; i < l; i++ ) {
+    if ( contentNodes[i] && contentNodes[i].parentNode )
+      candidates.push(contentNodes[i].parentNode);
+  }
 
   candidates = candidates
     .filter(function(node) {

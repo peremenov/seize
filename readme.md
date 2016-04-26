@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/peremenov/seize.svg?branch=master)](https://travis-ci.org/peremenov/seize)
 [![Dependency Status](https://www.versioneye.com/user/projects/571e32a0fcd19a00454422f0/badge.svg?style=flat)](https://www.versioneye.com/user/projects/571e32a0fcd19a00454422f0)
+[![Codacy Badge](https://api.codacy.com/project/badge/grade/4d843a0de0664e3aaba85753ebafeb6b)](https://www.codacy.com/app/peremenov/seize)
 
 ---
 

@@ -45,6 +45,15 @@ var testCases = [
     title: 'This is a title'
   },
   {
+    name: 'test_empty_tags',
+    content: '<article><p>Some text</p><br><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit <img src="null.gif"></p><h1>This is a title</h1></article>',
+    title: 'This is a title'
+  },
+  {
+    name: 'test_unacceptable',
+    content: '<article><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua</p><p>Ut enim ad minim veniam</p></article>',
+  },
+  {
     name: 'cnet_article',
     content: /The new dome-shaped Beoplay A1 is not only  the smallest wireless speaker from the Danish company/,
     url: 'http://www.cnet.com/products/b-o-play-beoplay-a1-portable-bluetooth-speaker/'

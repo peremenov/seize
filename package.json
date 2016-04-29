@@ -1,6 +1,6 @@
 {
   "name": "seize",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Seize is light Node or Browser web-page content extractor inspired by arc90 readability and Safari Reader",
   "main": "seize.js",
   "scripts": {

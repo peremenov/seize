@@ -10,10 +10,10 @@ var containersUpScoreRe = /article|body|content|page|post|text|main|entry/ig;
 var containersUpScoreSe = 'article,[itemprop="articleBody"],[itemtype="http://www.schema.org/NewsArticle"]';
 var containersDnScoreRe = /counter|image|breadcrumb|combx|comment|contact|disqus|foot|footer|footnote|link|media|meta|mod-conversations|promo|related|scroll|share|shoutbox|sidebar|social|sponsor|tags|toolbox|widget|about/ig;
 var containersDnScoreSe = 'footer,aside,header,nav,menu,ul,a,p,[itemprop="comment"],[itemtype="http://schema.org/Comment"]';
-var containersNotExpect = 'body,script,dl,ul,ol,h1,h2,h3,h4,h5,h6,figure,a,blockquote';
-var contentExpect       = 'p,dl,ul,ol,img,table,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time';
+var containersNotExpect = 'script,dl,ul,ol,h1,h2,h3,h4,h5,h6,figure,a,blockquote';
+var contentExpect       = 'p,dl,ul,ol,img,table,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time,pre,code';
 var contentHeadersSe    = 'h1,h2,h3,h4,h5,h6';
-var contentNotExpect    = 'footer,header,nav,article,section';
+var contentNotExpect    = 'footer,header,nav,article,section,main';
 var contentLeaveNodes   = 'br,hr,img';
 var elementLinksMap = {
   'a'     : 'href',
@@ -146,6 +146,18 @@ var setTextScore = function (node) {
 };
 
 /**
+ * Checks all parents to expecting containers accessory
+ * @param  {Node} node   target node
+ * @return {Bool}        result true/false
+ */
+var isExpectContainers = function(node) {
+  var parent = node.parentNode;
+  if ( !parent )
+    return true;
+  return !node.matches(containersNotExpect) && isExpectContainers(parent);
+};
+
+/**
  * Cleaning up empty nodes recursively
  * @param  {Node} node  target DOM-node
  */
@@ -155,9 +167,9 @@ var cleanUp = function(node) {
     if ( child.nodeType === 8 || (child.nodeType === 3 && !/\S/.test(child.nodeValue) ) ) {
       node.removeChild(child);
     } else if(child.nodeType === 1) {
+      cleanUp(child);
       if ( child.childNodes.length == 0 && !child.matches(contentLeaveNodes) )
         node.removeChild(child);
-      cleanUp(child);
     }
   }
 };
@@ -332,9 +344,9 @@ Seize.prototype.content = function () {
 
   candidates = candidates
     .filter(function(node) {
-      return !node.matches(containersNotExpect)
-        && node.querySelectorAll(contentNotExpect).length == 0
-        && node.querySelectorAll(contentExpect).length >= minCandidateNodes;
+      return node.querySelectorAll(contentNotExpect).length == 0
+          && node.querySelectorAll(contentExpect).length >= minCandidateNodes
+          && isExpectContainers(node);
     })
     .reduce(function(memo, node) {
       node.seize = node.seize || extend({}, defaultNodeOptions);

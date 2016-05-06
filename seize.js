@@ -29,6 +29,9 @@ var elementLinksMap = {
   'video' : [ 'src', 'poster' ],
   'source': 'src'
 };
+
+var protocolTestRe = /^(http|https)/;
+
 var minCandidateNodes = 2;
 var minCandidateTotalScore = 0;
 var minCandidateTextScore = 30;
@@ -44,9 +47,18 @@ var defaultOptions = {
   url: '',
   /**
    * Get function to log events
-   * @type {(Function|Null)}
+   * @type {(Function|null)}
    */
-  log: null
+  log: null,
+  /**
+   * Minimum size of images wich should be in content. Accepts `{ height: {Number}, width: {Number} }` object or false.
+   * Height or width might be 0 to ignore dimension
+   * @type {(Object|false)}
+   */
+  minImageSize: {
+    height: 20,
+    width: 40
+  }
 };
 
 var defaultNodeOptions = {
@@ -72,7 +84,7 @@ function getXPath(element) {
     while( (sibling = sibling.previousSibling) != null ) index++;
     index = index > 1 ? '[' + index + ']' : '';
     // id    = element.id ? '*[@id="' + element.id.trim() + '"]' : '';
-    cls   = element.className ? '[@class="' + element.className.trim().replace(/[\s\n\r\t]+/, ' ') + '"]' : '';
+    cls   = element.className ? '[@class="' + element.className.replace(/[\s\n\r\t]+/, ' ').trim() + '"]' : '';
     if ( !id )
       xpath = '/' + tagName + index + cls + xpath;
     else
@@ -160,6 +172,7 @@ var isExpectContainers = function(node) {
 /**
  * Cleaning up empty nodes recursively
  * @param  {Node} node  target DOM-node
+ * @return {Void}       none
  */
 var cleanUp = function(node) {
   for(var n = node.childNodes.length - 1; n >= 0; n--) {
@@ -180,6 +193,7 @@ var cleanUp = function(node) {
  * `options.log` get function to log events with `this.log`
  * @param {(Node|Document)} doc       DOM-document object
  * @param {Object} options            readability options
+ * @constructor
  */
 var Seize = function(doc, options) {
   var self = this;
@@ -198,11 +212,11 @@ var Seize = function(doc, options) {
 };
 /**
  * Log events by function defined in `options.log`
- * @return {Void}
+ * @return {Void} none
  */
 Seize.prototype.log = function () {
   var self = this;
-  if ( self.options.log instanceof Function )
+  if ( typeof self.options.log === 'function' )
     self.options.log.apply(self, arguments);
 };
 
@@ -235,7 +249,7 @@ Seize.prototype.getPageUrl = function () {
 Seize.prototype.resolveUrl = function(path) {
   var u = this.url;
 
-  if ( !u || typeof path != 'string' || /^#/.test(path) || /^(http|https)/.test(path) )
+  if ( !u || typeof path != 'string' || /^#/.test(path) || protocolTestRe.test(path) )
     return path;
 
   if ( path.match(/^javascript:/) )

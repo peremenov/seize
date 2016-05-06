@@ -2,7 +2,13 @@ var Seize  = require('..'),
     jsdom  = require('jsdom').jsdom,
     assert = require('chai').assert,
     path   = require('path'),
-    fs     = require('fs');
+    fs     = require('fs'),
+    _      = require('lodash');
+
+
+var bulkPath = __dirname + '/pages-bulk';
+var bulkInputPath  = bulkPath + '/input/';
+var bulkResultPath = bulkPath + '/result/';
 
 var jsdomOptions = {
   features: {
@@ -180,7 +186,7 @@ describe('Seize', function() {
         seize;
 
     describe('Run ' + test.name, function() {
-      this.timeout(10000);
+      this.slow(500);
 
       it('should init without errors', function() {
         seize = new Seize(window.document, {
@@ -214,6 +220,39 @@ describe('Seize', function() {
 
       after(function() {
         seize = null;
+      });
+    });
+
+  });
+
+  describe('Bulk test', function() {
+    var inputFileList  = fs.readdirSync(bulkInputPath),
+        resultFileList = fs.readdirSync(bulkResultPath),
+        files;
+
+    files = inputFileList.map(function(file) {
+      var basename = file.split('.')[0];
+      var txtname  = basename + '.txt';
+
+      if ( resultFileList.indexOf(txtname) === -1 )
+        txtname = null;
+      return [ file, txtname ];
+    });
+
+    files.forEach(function(paths) {
+      var inputPath  = bulkInputPath + paths[0];
+      var resultPath = null;
+
+      if ( paths[1] )
+        resultPath = bulkResultPath + paths[1];
+
+      it('should meet ' + paths[0] + ' <-> ' + paths[1], function() {
+        var input  = fs.readFileSync(inputPath, 'utf8');
+        var result = resultPath ? fs.readFileSync(resultPath, 'utf8') : null;
+        var window = jsdom(input, jsdomOptions).defaultView;
+        var seize = new Seize(window.document);
+
+        assert.equal(result, seize.text());
       });
     });
 

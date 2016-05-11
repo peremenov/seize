@@ -46,7 +46,7 @@ var testCases = [
   },
   {
     name: 'test_h',
-    content: 'This is a titleContent',
+    content: 'This is a title\n\nContent\n\n',
     url: 'http://example.com',
     title: 'This is a title'
   },
@@ -225,6 +225,12 @@ describe('Seize', function() {
 
   });
 
+  var text2array = function(text) {
+    return text.split('\n\n').map(function(line) {
+      return line.trim().replace(/\n[\s\t]*/g, ' ');
+    });
+  };
+
   describe('Bulk test', function() {
     var inputFileList  = fs.readdirSync(bulkInputPath),
         resultFileList = fs.readdirSync(bulkResultPath),
@@ -237,9 +243,12 @@ describe('Seize', function() {
       if ( resultFileList.indexOf(txtname) === -1 )
         txtname = null;
       return [ file, txtname ];
+    })
+    .filter(function(file) {
+      return file[0].indexOf('.html') > -1;
     });
 
-    // files = files.slice(5, 10);
+    files = files.slice(4, 5);
 
     files.forEach(function(paths) {
       var inputPath  = bulkInputPath + paths[0];
@@ -253,20 +262,37 @@ describe('Seize', function() {
 
         var input      = fs.readFileSync(inputPath, 'utf8');
         var resultHtml = resultPath ? fs.readFileSync(resultPath, 'utf8') : null;
-        var inDom      = jsdom(input, jsdomOptions).defaultView;
+        var testDoc    = jsdom(input, jsdomOptions).defaultView;
+        var resultText = '';
+        var testText   = '';
+        var resultArray = [];
+        var seize = new Seize(testDoc.document);
 
         if ( resultPath && resultHtml ) {
-          resultHtml = resultHtml.replace(/^URL: (.*)\n/i);
+          resultHtml = resultHtml.replace(/^URL:\s+(.*)\n/i, '');
           resultHtml = '<html><body>' + resultHtml + '</body></html>';
           result = jsdom(resultHtml, jsdomOptions).defaultView;
+          console.log(result.document);
+          resultText = seize.text(result.document.body);
         }
 
-        // console.log(resultHtml);
+        testText    = seize.text();
+        testArray   = text2array(testText);
+        resultArray = text2array(resultText);
 
-        // var seize = new Seize(inDom.document);
+        // console.log(testArray);
+        // console.log('################################################');
+        // console.log(resultArray);
 
-        // console.log(result.document.body.textContent);
-        // assert.equal(result, seize.text());
+        var score = testArray.reduce(function(memo, item, index) {
+          if ( resultArray.indexOf(item) >= index )
+            memo++;
+          return memo;
+        }, 0);
+
+        var rate = score/testArray.length;
+
+        assert.approximately(rate, 1, 0.3);
       });
     });
 

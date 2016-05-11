@@ -30,11 +30,11 @@ var elementLinksMap = {
   'source': 'src'
 };
 
-var protocolTestRe = /^(http|https)/;
+var protocolTestRe = /^http|^https)/;
 
 var minCandidateNodes = 2;
 var minCandidateTotalScore = 0;
-var minCandidateTextScore = 30;
+var minCandidateTextScore = 100;
 
 var depthFactor = 1;
 var defaultNodeScore = 40;
@@ -59,12 +59,6 @@ var defaultOptions = {
     height: 20,
     width: 40
   }
-};
-
-var defaultNodeOptions = {
-  nodeScore: 0,
-  textScore: 0,
-  depth: 0
 };
 
 /**
@@ -130,16 +124,31 @@ var checkParentNodeScore = function(node) {
 var checkNodeScore = function(node) {
   var xPathScore = getXPathScore(getXPath(node)),
       depth      = xPathScore.depth,
-      score      = 0;
+      score      = 0,
+      childNodes, childNode;
 
   if ( !node || !node.parentNode )
     return score;
+
+  childNodes = node.childNodes;
 
   if ( containersUpScoreRe.test(node.className) || containersUpScoreRe.test(node.id) || node.matches(containersUpScoreSe) )
     score += depth * depthFactor;
 
   if ( containersDnScoreRe.test(node.className) || containersDnScoreRe.test(node.id) || node.matches(containersDnScoreSe) )
     score -= depth * depthFactor;
+
+  /**
+   * Check if children has container nodes
+   */
+  if ( childNodes.length > 0 )
+    for ( var i = childNodes.length - 1; i >= 0; i-- ) {
+      childNode = childNodes[i];
+      if ( childNode.nodeType == 1 ) {
+        if ( containersUpScoreRe.test(childNode.className) || containersUpScoreRe.test(childNode.id) || childNode.matches(containersUpScoreSe) )
+          score -= depth * depthFactor;
+      }
+    }
 
   return score + checkParentNodeScore(node);
 };
@@ -175,6 +184,8 @@ var isExpectContainers = function(node) {
  * @return {Void}       none
  */
 var cleanUp = function(node) {
+  if ( node.childNodes.length == 0 )
+    return;
   for(var n = node.childNodes.length - 1; n >= 0; n--) {
     var child = node.childNodes[n];
     if ( child.nodeType === 8 || (child.nodeType === 3 && !/\S/.test(child.nodeValue) ) ) {
@@ -185,6 +196,102 @@ var cleanUp = function(node) {
         node.removeChild(child);
     }
   }
+};
+
+/**
+ * Candidate element
+ * @param {Seize} seize parent Seize instance
+ * @param {Node}  node  candidate node
+ * @constructor
+ */
+var Candidate = function(seize, node) {
+  var self = this;
+  self.node = node;
+
+  if ( !(seize instanceof Seize) ) {
+    throw new Error('Argument must be Seize');
+  }
+
+  self.seize = seize;
+  self.doc   = seize.doc;
+
+  self.xpath = getXPath(self.node);
+
+  self.xpathScore  = getXPathScore();
+  self.nodeScore   = self.getNodeScore();
+  self.textDensity = self.getTextDensity();
+  self.textScore   = self.getTextScore();
+};
+
+Candidate.prototype.isMatchStandart = function () {
+  var node = this.node;
+  return node.querySelectorAll(contentNotExpect).length == 0
+    && node.querySelectorAll(contentExpect).length >= minCandidateNodes
+    && isExpectContainers(node);
+};
+
+Candidate.prototype.getNodeScore = function () {
+
+};
+
+Candidate.prototype.getTextScore = function () {
+
+};
+
+Candidate.prototype.getTextDensity = function () {
+
+};
+
+/**
+ * Prepares content node: cleans up attributes, empties nodes, resolves URLs
+ * @return {Node}           ready article
+ */
+Candidate.prototype.prepareContent = function () {
+  var self = this,
+      article = self.node,
+      removeNodes = article.querySelectorAll(removeElementsList),
+      resolveUrlNodes = article.querySelectorAll(Object.keys(elementLinksMap).join(',')),
+      allNodes = article.querySelectorAll('*'),
+      node, attr, i, j, l;
+
+  var setAttribute = function(attr, node) {
+    var url = node.getAttribute(attr);
+    if ( url )
+      node.setAttribute( attr, self.resolveUrl(url) );
+  };
+
+  var removeAttribute = function(attr, node) {
+    if ( attr && removeAttributesRe.test(attr) )
+      node.removeAttribute(attr);
+  };
+
+  for ( i = removeNodes.length-1; i >= 0; i-- ) {
+    removeNodes[i].parentNode.removeChild(removeNodes[i]);
+  }
+
+  for ( i = article.attributes.length-1; i >= 0; i-- )
+    removeAttribute(article.attributes[i].nodeName, article);
+
+  for ( i = allNodes.length-1; i >= 0; i-- ) {
+    node = allNodes[i];
+    for ( j = node.attributes.length-1; j >= 0; j-- )
+      removeAttribute(node.attributes[j].nodeName, node);
+  }
+
+  for ( i = 0, l = resolveUrlNodes.length; i < l; i++ ) {
+    node = resolveUrlNodes[i];
+    attr = elementLinksMap[node.tagName.toLowerCase()];
+    if ( attr instanceof Array ) {
+      attr.forEach(function(attr) {
+        setAttribute(attr, node);
+      });
+    } else
+      setAttribute(attr, node);
+  }
+
+  cleanUp(article);
+
+  return article;
 };
 
 /**
@@ -259,13 +366,43 @@ Seize.prototype.resolveUrl = function(path) {
 };
 
 /**
- * Returns clean text
+ * Returns clean text. `<p>`, `<li>`, etc. replacing by `\n\n`
+ * @param  {Node} node    article node or child node
  * @return {String} clean text of readable article
  */
-Seize.prototype.text = function () {
-  if ( !this.article )
+Seize.prototype.text = function (node) {
+  var text = '',
+      self = this,
+      childNode,
+      childNodes;
+
+  node = node || self.article;
+
+  if ( node instanceof Candidate )
+    node = node.node;
+
+  if ( !node )
     return '';
-  return this.article.textContent;
+
+  childNodes = node.childNodes;
+
+  for ( var i = 0; i < childNodes.length; i++ ) {
+    childNode = childNodes[i];
+    if ( childNode.nodeType == 3 ) {
+      if ( /\S/.test(childNode.nodeValue) ) {
+        text += childNode.textContent;
+
+        if ( childNode.parentNode.matches(contentExpect) )
+          text += '\n\n';
+      }
+    } else {
+      if ( childNode.tagName == 'BR' )
+        text += '\n';
+      text += self.text(childNode);
+    }
+  }
+
+  return text;
 };
 
 /**
@@ -285,58 +422,6 @@ Seize.prototype.title = function () {
 };
 
 /**
- * Prepares content node: cleans up attributes, empties nodes, resolves URLs
- * @param  {Node} article   article node
- * @return {Node}           ready article
- */
-Seize.prototype.prepareContent = function (article) {
-  var self = this,
-      removeNodes = article.querySelectorAll(removeElementsList),
-      resolveUrlNodes = article.querySelectorAll(Object.keys(elementLinksMap).join(',')),
-      allNodes = article.querySelectorAll('*'),
-      node, attr, i, j, l;
-
-  var setAttribute = function(attr, node) {
-    var url = node.getAttribute(attr);
-    if ( url )
-      node.setAttribute( attr, self.resolveUrl(url) );
-  };
-
-  var removeAttribute = function(attr, node) {
-    if ( attr && removeAttributesRe.test(attr) )
-      node.removeAttribute(attr);
-  };
-
-  for ( i = removeNodes.length-1; i >= 0; i-- ) {
-    removeNodes[i].parentNode.removeChild(removeNodes[i]);
-  }
-
-  for ( i = article.attributes.length-1; i >= 0; i-- )
-    removeAttribute(article.attributes[i].nodeName, article);
-
-  for ( i = allNodes.length-1; i >= 0; i-- ) {
-    node = allNodes[i];
-    for ( j = node.attributes.length-1; j >= 0; j-- )
-      removeAttribute(node.attributes[j].nodeName, node);
-  }
-
-  for ( i = 0, l = resolveUrlNodes.length; i < l; i++ ) {
-    node = resolveUrlNodes[i];
-    attr = elementLinksMap[node.tagName.toLowerCase()];
-    if ( attr instanceof Array ) {
-      attr.forEach(function(attr) {
-        setAttribute(attr, node);
-      });
-    } else
-      setAttribute(attr, node);
-  }
-
-  cleanUp(article);
-
-  return article;
-};
-
-/**
  * Returns node that most likely has a content. Returns null if content is inacessible
  * @return {(Node|null)} returns node with article or null
  */
@@ -353,14 +438,12 @@ Seize.prototype.content = function () {
 
   for ( i = 0, l = contentNodes.length; i < l; i++ ) {
     if ( contentNodes[i] && contentNodes[i].parentNode )
-      candidates.push(contentNodes[i].parentNode);
+      candidates.push(new Candidate(self, contentNodes[i].parentNode));
   }
 
   candidates = candidates
-    .filter(function(node) {
-      return node.querySelectorAll(contentNotExpect).length == 0
-          && node.querySelectorAll(contentExpect).length >= minCandidateNodes
-          && isExpectContainers(node);
+    .filter(function(candidate) {
+      return candidate.isMatchStandart();
     })
     .reduce(function(memo, node) {
       node.seize = node.seize || extend({}, defaultNodeOptions);
@@ -376,7 +459,7 @@ Seize.prototype.content = function () {
     .map(setNodeScore)
     .map(setTextScore)
     .filter(function(node) {
-      return node.seize.textScore >= minCandidateTextScore;
+      return node.seize.textScore > minCandidateTextScore;
     });
 
   var maxNodeScore = candidates.reduce(function(score, node) {

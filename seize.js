@@ -2,7 +2,8 @@
 
 var url    = require('url'),
     extend = require('lodash/extend'),
-    sort   = require('lodash/sortBy');
+    sort   = require('lodash/sortBy'),
+    values = require('lodash/values');
 
 var removeElementsList  = 'style,script,form,object,embed,link,form,button,input,label';
 var removeAttributesRe  = /^on|^id$|^class|^data-|^style/i;
@@ -11,7 +12,7 @@ var containersUpScoreSe = 'article,[itemprop="articleBody"],[itemtype="http://ww
 var containersDnScoreRe = /counter|image|breadcrumb|combx|comment|contact|disqus|foot|footer|footnote|link|media|meta|mod-conversations|promo|related|scroll|share|shoutbox|sidebar|social|sponsor|tags|toolbox|widget|about/ig;
 var containersDnScoreSe = 'footer,aside,header,nav,menu,ul,a,p,[itemprop="comment"],[itemtype="http://schema.org/Comment"]';
 var containersNotExpect = 'script,dl,ul,ol,h1,h2,h3,h4,h5,h6,figure,a,blockquote';
-var contentExpect       = 'p,dl,ul,ol,img,table,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time,pre,code';
+var contentExpect       = 'p,dl,ul,ol,img,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time,pre,code';
 var contentHeadersSe    = 'h1,h2,h3,h4,h5,h6';
 var contentNotExpect    = 'footer,header,nav,article,section,main';
 var contentLeaveNodes   = 'br,hr,img';
@@ -30,11 +31,11 @@ var elementLinksMap = {
   'source': 'src'
 };
 
-var protocolTestRe = /^http|^https)/;
+var protocolTestRe = /^http|^https/;
 
 var minCandidateNodes = 2;
 var minCandidateTotalScore = 0;
-var minCandidateTextScore = 100;
+var minCandidateTextLength = 100;
 
 var depthFactor = 1;
 var defaultNodeScore = 40;
@@ -153,19 +154,6 @@ var checkNodeScore = function(node) {
   return score + checkParentNodeScore(node);
 };
 
-var setNodeScore = function (node) {
-  var xpathScore       = getXPathScore(getXPath(node));
-  var nodeScore        = checkNodeScore(node);
-  node.seize.depth     = xpathScore.depth;
-  node.seize.nodeScore += nodeScore - xpathScore.depth * xpathScore.distance;
-  return node;
-};
-
-var setTextScore = function (node) {
-  node.seize.textScore = node.textContent.length;
-  return node;
-};
-
 /**
  * Checks all parents to expecting containers accessory
  * @param  {Node} node   target node
@@ -217,14 +205,16 @@ var Candidate = function(seize, node) {
 
   self.xpath = getXPath(self.node);
 
-  self.xpathScore  = getXPathScore();
+  self.xpathScore  = getXPathScore(self.xpath);
   self.nodeScore   = self.getNodeScore();
   self.textDensity = self.getTextDensity();
+  self.textLength  = self.seize.text(self.node).length;
   self.textScore   = self.getTextScore();
 };
 
 Candidate.prototype.isMatchStandart = function () {
   var node = this.node;
+  return true;
   return node.querySelectorAll(contentNotExpect).length == 0
     && node.querySelectorAll(contentExpect).length >= minCandidateNodes
     && isExpectContainers(node);
@@ -295,6 +285,15 @@ Candidate.prototype.prepareContent = function () {
 };
 
 /**
+ * Check candidate matching to minimum requirements
+ * @return {Boolean} true/false
+ */
+Candidate.prototype.isMatchRequirements = function () {
+  var self = this;
+  return self.isMatchStandart() && self.textLength > minCandidateTextLength;
+}
+
+/**
  * Seize object
  * `options.url` needs to resolve relative links. If url is empty it will try to determine automaticly.
  * `options.log` get function to log events with `this.log`
@@ -317,6 +316,7 @@ var Seize = function(doc, options) {
   self.log( 'xpath   ', getXPath(self.article) );
   self.log( 'article ', self.article && self.article.outerHTML );
 };
+
 /**
  * Log events by function defined in `options.log`
  * @return {Void} none
@@ -367,7 +367,7 @@ Seize.prototype.resolveUrl = function(path) {
 
 /**
  * Returns clean text. `<p>`, `<li>`, etc. replacing by `\n\n`
- * @param  {Node} node    article node or child node
+ * @param  {(Node|Candidate)} node    article node or child node
  * @return {String} clean text of readable article
  */
 Seize.prototype.text = function (node) {
@@ -434,67 +434,27 @@ Seize.prototype.content = function () {
   }
 
   var contentNodes = self.doc.querySelectorAll(contentExpect),
-      candidates = [];
+      candidates = {},
+      candidate = null;
 
   for ( i = 0, l = contentNodes.length; i < l; i++ ) {
-    if ( contentNodes[i] && contentNodes[i].parentNode )
-      candidates.push(new Candidate(self, contentNodes[i].parentNode));
+    if ( contentNodes[i] && contentNodes[i].parentNode ) {
+      candidate = new Candidate(self, contentNodes[i].parentNode);
+      candidates[candidate.xpath] = candidate;
+    }
   }
 
-  candidates = candidates
-    .filter(function(candidate) {
-      return candidate.isMatchStandart();
-    })
-    .reduce(function(memo, node) {
-      node.seize = node.seize || extend({}, defaultNodeOptions);
+  candidates = values(candidates);
 
-      if ( memo.indexOf(node) > -1 ) {
-        node.seize.nodeScore += defaultNodeScore;
-        return memo;
-      }
-
-      memo.push(node);
-      return memo;
-    }, [])
-    .map(setNodeScore)
-    .map(setTextScore)
-    .filter(function(node) {
-      return node.seize.textScore > minCandidateTextScore;
+    candidates.filter(function(candidate) {
+      return candidate.isMatchRequirements();
     });
-
-  var maxNodeScore = candidates.reduce(function(score, node) {
-    return Math.max(node.seize.nodeScore, score);
-  }, 0);
-
-  var maxTextScore = candidates.reduce(function(score, node) {
-    return Math.max(node.seize.textScore, score);
-  }, 0);
-
-  candidates = candidates.map(function(node) {
-    node.seize.textScore = node.seize.textScore / maxTextScore;
-    node.seize.nodeScore = node.seize.nodeScore / maxNodeScore;
-    return node;
-  }).filter(function(node) {
-    return node.seize.nodeScore * node.seize.textScore > minCandidateTotalScore;
-  });
-
-  if ( self.options.log ) {
-    self.log( 'candidates ' );
-    candidates.forEach(function(node) {
-      self.log( 'xpath      ', getXPath(node) );
-      self.log( 'article    ', self.article && self.article.outerHTML );
-    });
-  }
 
   if ( !candidates.length )
     return null;
 
-  candidates = sort(candidates, function(node) {
-    return -(node.seize.nodeScore * node.seize.textScore);
-  });
-
   result = candidates[0];
-  return self.prepareContent(result);
+  return result.prepareContent();
 };
 
 module.exports = Seize;

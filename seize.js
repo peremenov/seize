@@ -12,7 +12,7 @@ var containersUpScoreSe = 'article,[itemprop="articleBody"],[itemtype="http://ww
 var containersDnScoreRe = /counter|image|breadcrumb|combx|comment|contact|disqus|foot|footer|footnote|link|media|meta|mod-conversations|promo|related|scroll|share|shoutbox|sidebar|social|sponsor|tags|toolbox|widget|about/ig;
 var containersDnScoreSe = 'footer,aside,header,nav,menu,ul,a,p,[itemprop="comment"],[itemtype="http://schema.org/Comment"]';
 var containersNotExpect = 'script,dl,ul,ol,h1,h2,h3,h4,h5,h6,figure,a,blockquote';
-var contentExpect       = 'p,dl,ul,ol,img,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time,pre,code';
+var contentTextNodesSe  = 'p,dl,ul,ol,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time,pre,code';
 var contentHeadersSe    = 'h1,h2,h3,h4,h5,h6';
 var contentNotExpect    = 'footer,header,nav,article,section,main';
 var contentLeaveNodes   = 'br,hr,img';
@@ -36,9 +36,14 @@ var protocolTestRe = /^http|^https/;
 var minCandidateNodes = 2;
 var minCandidateTotalScore = 0;
 var minCandidateTextLength = 100;
+var minNodeTextLength = 25;
 
-var depthFactor = 1;
-var defaultNodeScore = 40;
+var textScoreDepthPenalty = .1;
+var textScoreLengthPower = 1.25;
+var textDensityPenalty = .2;
+
+var depthFactor = 1.15;
+var defaultNodeScore = 1;
 
 var defaultOptions = {
   /**
@@ -70,18 +75,20 @@ var defaultOptions = {
 function getXPath(element) {
   var xpath = '';
   for ( ; element && element.nodeType == 1; element = element.parentNode ) {
-    var tagName = element.tagName.toLowerCase(),
+    var tagName = element.tagName,
         sibling = element,
-        index,
-        id,
-        cls;
+        index = 1,
+        id  = '',
+        cls = '';
 
-    while( (sibling = sibling.previousSibling) != null ) index++;
+    while ( (sibling = sibling.previousSibling) != null )
+      if ( sibling.tagName == tagName) index++;
+
     index = index > 1 ? '[' + index + ']' : '';
     // id    = element.id ? '*[@id="' + element.id.trim() + '"]' : '';
-    cls   = element.className ? '[@class="' + element.className.replace(/[\s\n\r\t]+/, ' ').trim() + '"]' : '';
+    // cls   = element.className ? '[@class="' + element.className.replace(/[\s\n\r\t]+/, ' ').trim() + '"]' : '';
     if ( !id )
-      xpath = '/' + tagName + index + cls + xpath;
+      xpath = '/' + tagName.toLowerCase() + index + cls + xpath;
     else
       return xpath = id + xpath;
   }
@@ -106,52 +113,9 @@ var getXPathScore = function(xpath) {
   }
 
   return {
-    depth: depth,
+    depth: depth - 1,
     distance: distance
   };
-};
-
-var checkParentNodeScore = function(node) {
-  if ( node )
-    return checkNodeScore(node.parentNode);
-  return 0;
-};
-
-/**
- * Setting node score recursively. Closer nodes should more impact to score.
- * @param  {Node} node   target DOM-node
- * @return {Number}      score number
- */
-var checkNodeScore = function(node) {
-  var xPathScore = getXPathScore(getXPath(node)),
-      depth      = xPathScore.depth,
-      score      = 0,
-      childNodes, childNode;
-
-  if ( !node || !node.parentNode )
-    return score;
-
-  childNodes = node.childNodes;
-
-  if ( containersUpScoreRe.test(node.className) || containersUpScoreRe.test(node.id) || node.matches(containersUpScoreSe) )
-    score += depth * depthFactor;
-
-  if ( containersDnScoreRe.test(node.className) || containersDnScoreRe.test(node.id) || node.matches(containersDnScoreSe) )
-    score -= depth * depthFactor;
-
-  /**
-   * Check if children has container nodes
-   */
-  if ( childNodes.length > 0 )
-    for ( var i = childNodes.length - 1; i >= 0; i-- ) {
-      childNode = childNodes[i];
-      if ( childNode.nodeType == 1 ) {
-        if ( containersUpScoreRe.test(childNode.className) || containersUpScoreRe.test(childNode.id) || childNode.matches(containersUpScoreSe) )
-          score -= depth * depthFactor;
-      }
-    }
-
-  return score + checkParentNodeScore(node);
 };
 
 /**
@@ -174,7 +138,7 @@ var isExpectContainers = function(node) {
 var cleanUp = function(node) {
   if ( node.childNodes.length == 0 )
     return;
-  for(var n = node.childNodes.length - 1; n >= 0; n--) {
+  for ( var n = node.childNodes.length - 1; n >= 0; n--) {
     var child = node.childNodes[n];
     if ( child.nodeType === 8 || (child.nodeType === 3 && !/\S/.test(child.nodeValue) ) ) {
       node.removeChild(child);
@@ -210,26 +174,101 @@ var Candidate = function(seize, node) {
   self.textDensity = self.getTextDensity();
   self.textLength  = self.seize.text(self.node).length;
   self.textScore   = self.getTextScore();
+
+  self.totalScore = Math.pow(self.nodeScore, self.textDensity * self.textScore);
 };
 
 Candidate.prototype.isMatchStandart = function () {
   var node = this.node;
-  return true;
   return node.querySelectorAll(contentNotExpect).length == 0
-    && node.querySelectorAll(contentExpect).length >= minCandidateNodes
+    && node.querySelectorAll(contentTextNodesSe).length >= minCandidateNodes
     && isExpectContainers(node);
 };
 
-Candidate.prototype.getNodeScore = function () {
+Candidate.prototype.checkParentNodeScore = function(node) {
+  if ( node )
+    return this.getNodeScore(node.parentNode);
+  return 0;
+};
 
+/**
+ * Setting node score recursively. Closer nodes should more impact to score.
+ * @param  {Node} node   target DOM-node
+ * @return {Number}      score number
+ */
+Candidate.prototype.getNodeScore = function (node) {
+  var self = this,
+      xpathScore = self.xpathScore,
+      depth      = xpathScore.depth,
+      score      = defaultNodeScore;
+
+  node = node || self.node;
+
+  if ( !node || !node.parentNode )
+    return score;
+
+  if ( containersUpScoreRe.test(node.className) || containersUpScoreRe.test(node.id) || node.matches(containersUpScoreSe) )
+    score += depth * depthFactor;
+
+  if ( containersDnScoreRe.test(node.className) || containersDnScoreRe.test(node.id) || node.matches(containersDnScoreSe) )
+    score -= depth * depthFactor;
+
+  return score + self.checkParentNodeScore(node);
+};
+
+Candidate.prototype.getTextNodeScore = function (node) {
+  var self = this,
+      len  = 0,
+      text = '',
+      parent = null,
+      multiplier = 1;
+
+  if ( !node || node.nodeType != 3 )
+    return 0;
+
+  text = node.textContent;
+  len  = text.trim().length;
+
+  if ( len < minNodeTextLength )
+    return 0;
+
+  for ( parent = node.parentNode; parent && parent !== self.node; parent = parent.parentNode )
+    multiplier -= textScoreDepthPenalty;
+
+  return Math.pow(len * multiplier, textScoreLengthPower);
 };
 
 Candidate.prototype.getTextScore = function () {
+  var self = this,
+      textNodes = self.node.querySelectorAll(contentTextNodesSe),
+      score = 0;
 
+  for ( var i = 0, l = textNodes.length; i < l; i++ ) {
+    if ( textNodes[i].childNodes.length ) {
+      score += self.getTextNodeScore(textNodes[i].childNodes[0]);
+    }
+  }
+
+  return score / self.textLength;
 };
 
 Candidate.prototype.getTextDensity = function () {
+  var self = this,
+      contentNodes = self.node.childNodes,
+      score = 1,
+      node;
 
+  for ( var i = 0, l = contentNodes.length; i < l; i++ ) {
+    node = contentNodes[i];
+    if ( node && node.nextSibling ) {
+      if ( node.nextSibling.nodeType == 3 || node.nextSibling.matches(contentTextNodesSe) )
+        score += textDensityPenalty;
+      else
+        score -= textDensityPenalty;
+    }
+  }
+
+  return score;
 };
 
 /**
@@ -247,7 +286,7 @@ Candidate.prototype.prepareContent = function () {
   var setAttribute = function(attr, node) {
     var url = node.getAttribute(attr);
     if ( url )
-      node.setAttribute( attr, self.resolveUrl(url) );
+      node.setAttribute( attr, self.seize.resolveUrl(url) );
   };
 
   var removeAttribute = function(attr, node) {
@@ -290,8 +329,10 @@ Candidate.prototype.prepareContent = function () {
  */
 Candidate.prototype.isMatchRequirements = function () {
   var self = this;
-  return self.isMatchStandart() && self.textLength > minCandidateTextLength;
-}
+  return self.isMatchStandart()
+      && self.textLength > minCandidateTextLength
+      && self.totalScore > minCandidateTotalScore;
+};
 
 /**
  * Seize object
@@ -374,7 +415,8 @@ Seize.prototype.text = function (node) {
   var text = '',
       self = this,
       childNode,
-      childNodes;
+      childNodes,
+      parentNode;
 
   node = node || self.article;
 
@@ -389,15 +431,16 @@ Seize.prototype.text = function (node) {
   for ( var i = 0; i < childNodes.length; i++ ) {
     childNode = childNodes[i];
     if ( childNode.nodeType == 3 ) {
-      if ( /\S/.test(childNode.nodeValue) ) {
+      if ( /\S/.test(childNode.textContent) )
         text += childNode.textContent;
-
-        if ( childNode.parentNode.matches(contentExpect) )
+    } else {
+      if ( childNode.nodeType == 1 ) {
+        if ( childNode.tagName == 'BR' )
+          text += '\n';
+        else if ( childNode.matches(contentTextNodesSe) )
           text += '\n\n';
       }
-    } else {
-      if ( childNode.tagName == 'BR' )
-        text += '\n';
+
       text += self.text(childNode);
     }
   }
@@ -433,7 +476,7 @@ Seize.prototype.content = function () {
     return self.article;
   }
 
-  var contentNodes = self.doc.querySelectorAll(contentExpect),
+  var contentNodes = self.doc.querySelectorAll(contentTextNodesSe),
       candidates = {},
       candidate = null;
 
@@ -444,17 +487,19 @@ Seize.prototype.content = function () {
     }
   }
 
-  candidates = values(candidates);
-
-    candidates.filter(function(candidate) {
+  candidates = values(candidates)
+    .filter(function(candidate) {
       return candidate.isMatchRequirements();
     });
+  candidates = sort(candidates, function(candidate) {
+    return candidate.totalScore;
+  });
 
   if ( !candidates.length )
     return null;
 
-  result = candidates[0];
-  return result.prepareContent();
+  result = candidates[candidates.length-1];
+  return self.article = result.prepareContent();
 };
 
 module.exports = Seize;

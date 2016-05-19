@@ -226,9 +226,16 @@ describe('Seize', function() {
   });
 
   var text2array = function(text) {
-    return text.split('\n\n').map(function(line) {
-      return line.trim().replace(/\n[\s\t]*/g, ' ');
-    });
+    return text
+      .split('\n\n')
+      .map(function(line) {
+        return line.trim().replace(/\n[\s\t]*/g, ' ');
+      })
+      .reduce(function(lines, line) {
+        if ( line )
+          lines.push(line);
+        return lines;
+      }, []);
   };
 
   describe('Bulk test', function() {
@@ -269,10 +276,20 @@ describe('Seize', function() {
         var seize = new Seize(testDoc.document);
 
         if ( resultPath && resultHtml ) {
-          resultHtml = resultHtml.replace(/^URL:\s+(.*)\n/i, '');
-          resultHtml = '<html><body>' + resultHtml + '</body></html>';
+          resultHtml = resultHtml
+            .replace(/^URL:\s+(.*)\n/i, '')
+            .replace(/<h>/g, '<h1>')
+            .replace(/<l>/g, '<li>')
+            .split('\n\n')
+            .map(function(line) {
+              return line
+                .replace(/\n/g, ' ')
+                .replace(/<([0-9a-z]+)>(.*)/g, '<$1>$2</$1>')
+                .replace(/\s+/g, ' ');
+            })
+            .join('');
+          resultHtml = '<html><head></head><body><div>' + resultHtml + '</div></body></html>';
           result = jsdom(resultHtml, jsdomOptions).defaultView;
-          console.log(result.document);
           resultText = seize.text(result.document.body);
         }
 
@@ -280,7 +297,9 @@ describe('Seize', function() {
         testArray   = text2array(testText);
         resultArray = text2array(resultText);
 
-        // console.log(testArray);
+        // console.log(seize.article.node.outerHTML);
+
+        // console.log(testText);
         // console.log('################################################');
         // console.log(resultArray);
 

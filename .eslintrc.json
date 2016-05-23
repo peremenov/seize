@@ -24,6 +24,12 @@
     ],
     "valid-jsdoc": [
       "error"
-    ]
+    ],
+    "linebreak-style": [
+      "error",
+      "unix"
+    ],
+    "no-inline-comments": "error",
+    "semi-spacing": "error"
   }
 }

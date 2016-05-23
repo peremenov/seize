@@ -33,16 +33,16 @@ var elementLinksMap = {
 
 var protocolTestRe = /^http|^https/;
 
-var minCandidateNodes = 2;
 var minCandidateTotalScore = 0;
+var minCandidateNodeScore = 0;
 var minCandidateTextLength = 100;
-var minNodeTextLength = 25;
+var minNodeTextLength = 15;
 
 var textScoreDepthPenalty = .1;
 var textScoreLengthPower = 1.25;
 var textDensityPenalty = .2;
 
-var depthFactor = 1.15;
+var depthFactor = .1;
 var defaultNodeScore = 1;
 
 var defaultOptions = {
@@ -68,84 +68,88 @@ var defaultOptions = {
 };
 
 /**
- * Shows XPath for given Node element
- * @param  {Node} element Node element
- * @return {String}       XPath string
+ * Common utility methods
+ * @type {Object}
  */
-function getXPath(element) {
-  var xpath = '';
-  for ( ; element && element.nodeType == 1; element = element.parentNode ) {
-    var tagName = element.tagName,
-        sibling = element,
-        index = 1,
-        id  = '',
-        cls = '';
+var utils = {
+  /**
+   * Shows XPath for given Node element
+   * @param  {Node} element Node element
+   * @return {String}       XPath string
+   */
+  getXPath: function(element) {
+    var xpath = '';
+    for ( ; element && element.nodeType == 1; element = element.parentNode ) {
+      var tagName = element.tagName,
+          sibling = element,
+          index = 1,
+          id  = '',
+          cls = '';
 
-    while ( (sibling = sibling.previousSibling) != null )
-      if ( sibling.tagName == tagName) index++;
+      while ( (sibling = sibling.previousSibling) != null )
+        if ( sibling.tagName == tagName) index++;
 
-    index = index > 1 ? '[' + index + ']' : '';
-    // id    = element.id ? '*[@id="' + element.id.trim() + '"]' : '';
-    // cls   = element.className ? '[@class="' + element.className.replace(/[\s\n\r\t]+/, ' ').trim() + '"]' : '';
-    if ( !id )
-      xpath = '/' + tagName.toLowerCase() + index + cls + xpath;
-    else
-      return xpath = id + xpath;
-  }
-  return xpath;
-}
+      index = index > 1 ? '[' + index + ']' : '';
+      if ( !id )
+        xpath = '/' + tagName.toLowerCase() + index + cls + xpath;
+      else
+        return xpath = id + xpath;
+    }
+    return xpath;
+  },
 
-/**
- * Calculate score for given XPath
- * @param  {String} xpath Xpath string
- * @return {Number}       score
- */
-var getXPathScore = function(xpath) {
-  var depth    = xpath.split('/').length,
-      distance = xpath.match(/\[(\d+)\]/g);
+  /**
+   * Calculate score for given XPath
+   * @param  {String} xpath Xpath string
+   * @return {Number}       score
+   */
+  getXPathScore: function(xpath) {
+    var depth    = xpath.split('/').length,
+        distance = xpath.match(/\[(\d+)\]/g);
 
-  if ( distance && distance.length ) {
-    distance = distance.reduce(function(memo, item) {
-      return parseInt(item.match(/(\d)+/g)[0]);
-    }, 0);
-  } else {
-    distance = 1;
-  }
+    if ( distance && distance.length ) {
+      distance = distance.reduce(function(memo, item) {
+        return memo + parseInt(item.match(/(\d)+/g)[0]);
+      }, 0);
+    } else {
+      distance = 1;
+    }
 
-  return {
-    depth: depth - 1,
-    distance: distance
-  };
-};
+    return {
+      depth: depth - 1,
+      distance: distance
+    };
+  },
 
-/**
- * Checks all parents to expecting containers accessory
- * @param  {Node} node   target node
- * @return {Bool}        result true/false
- */
-var isExpectContainers = function(node) {
-  var parent = node.parentNode;
-  if ( !parent )
-    return true;
-  return !node.matches(containersNotExpect) && isExpectContainers(parent);
-};
+  /**
+   * Checks all parents to expecting containers accessory
+   * @param  {Node} node   target node
+   * @return {Bool}        result true/false
+   */
+  isExpectContainers: function(node) {
+    var parent = node.parentNode;
+    if ( !parent )
+      return true;
+    return !node.matches(containersNotExpect) && utils.isExpectContainers(parent);
+  },
 
-/**
- * Cleaning up empty nodes recursively
- * @param  {Node} node  target DOM-node
- * @return {Void}       none
- */
-var cleanUp = function(node) {
-  if ( node.childNodes.length == 0 )
-    return;
-  for ( var n = node.childNodes.length - 1; n >= 0; n--) {
-    var child = node.childNodes[n];
-    if ( child.nodeType === 8 || (child.nodeType === 3 && !/\S/.test(child.nodeValue) ) ) {
-      node.removeChild(child);
-    } else if(child.nodeType === 1) {
-      cleanUp(child);
-      if ( child.childNodes.length == 0 && !child.matches(contentLeaveNodes) )
+  /**
+   * Cleaning up empty nodes recursively
+   * @param  {Node} node  target DOM-node
+   * @return {Void}       none
+   */
+  cleanUpEmpty: function(node) {
+    if ( node.childNodes.length == 0 )
+      return;
+    for ( var n = node.childNodes.length - 1; n >= 0; n--) {
+      var child = node.childNodes[n];
+      if ( child.nodeType === 8 || (child.nodeType === 3 && !/\S/.test(child.nodeValue) ) ) {
         node.removeChild(child);
+      } else if(child.nodeType === 1) {
+        utils.cleanUpEmpty(child);
+        if ( child.childNodes.length == 0 && !child.matches(contentLeaveNodes) )
+          node.removeChild(child);
+      }
     }
   }
 };
@@ -158,18 +162,20 @@ var cleanUp = function(node) {
  */
 var Candidate = function(seize, node) {
   var self = this;
-  self.node = node;
 
-  if ( !(seize instanceof Seize) ) {
+  if ( !(seize instanceof Seize) )
     throw new Error('Argument must be Seize');
-  }
 
+  if ( !node )
+    throw new Error('DOM node must be defined');
+
+  self.node = node;
   self.seize = seize;
   self.doc   = seize.doc;
 
-  self.xpath = getXPath(self.node);
+  self.xpath = utils.getXPath(self.node);
 
-  self.xpathScore  = getXPathScore(self.xpath);
+  self.xpathScore  = utils.getXPathScore(self.xpath);
   self.nodeScore   = self.getNodeScore();
   self.textDensity = self.getTextDensity();
   self.textLength  = self.seize.text(self.node).length;
@@ -181,8 +187,7 @@ var Candidate = function(seize, node) {
 Candidate.prototype.isMatchStandart = function () {
   var node = this.node;
   return node.querySelectorAll(contentNotExpect).length == 0
-    && node.querySelectorAll(contentTextNodesSe).length >= minCandidateNodes
-    && isExpectContainers(node);
+    && utils.isExpectContainers(node);
 };
 
 Candidate.prototype.checkParentNodeScore = function(node) {
@@ -200,18 +205,22 @@ Candidate.prototype.getNodeScore = function (node) {
   var self = this,
       xpathScore = self.xpathScore,
       depth      = xpathScore.depth,
-      score      = defaultNodeScore;
+      distance   = xpathScore.distance,
+      score      = defaultNodeScore,
+      result;
 
   node = node || self.node;
 
   if ( !node || !node.parentNode )
     return score;
 
+  result = depth * distance * depthFactor;
+
   if ( containersUpScoreRe.test(node.className) || containersUpScoreRe.test(node.id) || node.matches(containersUpScoreSe) )
-    score += depth * depthFactor;
+    score += result;
 
   if ( containersDnScoreRe.test(node.className) || containersDnScoreRe.test(node.id) || node.matches(containersDnScoreSe) )
-    score -= depth * depthFactor;
+    score -= result;
 
   return score + self.checkParentNodeScore(node);
 };
@@ -256,12 +265,14 @@ Candidate.prototype.getTextDensity = function () {
   var self = this,
       contentNodes = self.node.childNodes,
       score = 1,
+      next,
       node;
 
   for ( var i = 0, l = contentNodes.length; i < l; i++ ) {
     node = contentNodes[i];
+    next = node.nextSibling;
     if ( node && node.nextSibling ) {
-      if ( node.nextSibling.nodeType == 3 || node.nextSibling.matches(contentTextNodesSe) )
+      if ( next.nodeType == 3 || ( next.nodeType == 1 && next.matches(contentTextNodesSe) ) )
         score += textDensityPenalty;
       else
         score -= textDensityPenalty;
@@ -318,7 +329,7 @@ Candidate.prototype.prepareContent = function () {
       setAttribute(attr, node);
   }
 
-  cleanUp(article);
+  utils.cleanUpEmpty(article);
 
   return article;
 };
@@ -331,7 +342,8 @@ Candidate.prototype.isMatchRequirements = function () {
   var self = this;
   return self.isMatchStandart()
       && self.textLength > minCandidateTextLength
-      && self.totalScore > minCandidateTotalScore;
+      && self.totalScore > minCandidateTotalScore
+      && self.nodeScore > minCandidateNodeScore;
 };
 
 /**
@@ -354,7 +366,7 @@ var Seize = function(doc, options) {
   self.url     = self.options.url || self.getPageUrl() || '';
   self.article = self.content();
 
-  self.log( 'xpath   ', getXPath(self.article) );
+  self.log( 'xpath   ', utils.getXPath(self.article) );
   self.log( 'article ', self.article && self.article.outerHTML );
 };
 
@@ -415,8 +427,7 @@ Seize.prototype.text = function (node) {
   var text = '',
       self = this,
       childNode,
-      childNodes,
-      parentNode;
+      childNodes;
 
   node = node || self.article;
 
@@ -434,14 +445,14 @@ Seize.prototype.text = function (node) {
       if ( /\S/.test(childNode.textContent) )
         text += childNode.textContent;
     } else {
+      text += self.text(childNode);
+
       if ( childNode.nodeType == 1 ) {
-        if ( childNode.tagName == 'BR' )
+        if ( childNode.tagName == 'BR' || childNode.tagName == 'HR' )
           text += '\n';
         else if ( childNode.matches(contentTextNodesSe) )
           text += '\n\n';
       }
-
-      text += self.text(childNode);
     }
   }
 
@@ -501,5 +512,9 @@ Seize.prototype.content = function () {
   result = candidates[candidates.length-1];
   return self.article = result.prepareContent();
 };
+
+Seize.Seize     = Seize;
+Seize.Candidate = Candidate;
+Seize.utils     = utils;
 
 module.exports = Seize;

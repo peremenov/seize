@@ -35,24 +35,24 @@ var testCases = [
   // },
   {
     name: 'test_attr',
-    content: '<article><p>Some text</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit</p></article>',
+    content: '<article><p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit</p></article>',
     title: 'Document'
   },
   {
     name: 'test_url',
-    content: '<article><img src="http://example.com/image.gif" alt=""><a href="http://example.com/cat/"><img src="http://example2.com/image.gif" alt=""></a><img src="http://example.com/cat/111/image.gif" alt=""><a href="http://example.com/cat/post2"><img src="http://example.com/cat/image.gif" alt=""></a><a href="#hash-link">Link content</a><h1><a href="">JS link text</a>. Common text.</h1><p>Wow! <a href="http://example3.com/">Protocol link text</a>. New paragraph.</p></article>',
+    content: '<article><img src="http://example.com/image.gif" alt=""><a href="http://example.com/cat/"><img src="http://example2.com/image.gif" alt=""></a><img src="http://example.com/cat/111/image.gif" alt=""><a href="http://example.com/cat/post2"><img src="http://example.com/cat/image.gif" alt=""></a><a href="#hash-link">Link content</a> Lorem ipsum dolor sit amet, consectetur adipiscing elit\n    <h1><a href="">JS link text</a>. Common text.</h1><p>Wow! <a href="http://example3.com/">Protocol link text</a>. New paragraph.</p></article>',
     url: 'http://example.com/cat/post',
     title: 'Document'
   },
   {
     name: 'test_h',
-    content: 'This is a title\n\nContent\n\n',
+    content: 'This is a title\n\nContent\n\nNemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit\n\n',
     url: 'http://example.com',
     title: 'This is a title'
   },
   {
     name: 'test_empty_tags',
-    content: '<article><p>Some text</p><br><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit <img src="null.gif"></p><h1>This is a title</h1></article>',
+    content: '<article><p>Some text</p><br><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit <img src="null.gif"></p><h1>This is a title</h1><p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit</p></article>',
     title: 'This is a title'
   },
   {
@@ -122,6 +122,50 @@ var testCases = [
 
 ];
 
+describe('Seize.Candidate', function() {
+  var seize;
+
+  beforeEach(function() {
+    var pageFile = 'test_candidate.html',
+        pagePath = path.join(__dirname, 'pages', pageFile),
+        content = fs.readFileSync(pagePath, 'utf8'),
+        window = jsdom(content, jsdomOptions).defaultView;
+
+    seize = new Seize(window.document, {});
+  });
+
+  it('should throw error (parent is not Seize)', function() {
+    assert.throws(function() {
+      new Seize.Candidate({});
+    }, 'Argument must be Seize');
+  });
+
+  it('should throw error (node must be defined)', function() {
+    assert.throws(function() {
+      new Seize.Candidate(seize, null);
+    }, 'DOM node must be defined');
+  });
+
+
+});
+
+
+describe('Seize.utils', function() {
+  var seize;
+
+  beforeEach(function() {
+    var pageFile = 'test_utils.html',
+        pagePath = path.join(__dirname, 'pages', pageFile),
+        content = fs.readFileSync(pagePath, 'utf8'),
+        window = jsdom(content, jsdomOptions).defaultView;
+
+    seize = new Seize(window.document, {});
+  });
+
+  it('', function() {});
+
+});
+
 describe('Seize', function() {
 
   it('should throw error (empty argument)', function() {
@@ -190,7 +234,7 @@ describe('Seize', function() {
 
       it('should init without errors', function() {
         seize = new Seize(window.document, {
-          // debug: console.log
+          // log: console.log
         });
       });
 

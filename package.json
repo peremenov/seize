@@ -1,6 +1,6 @@
 {
   "name": "seize",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Seize is light Node or Browser web-page content extractor inspired by arc90 readability and Safari Reader",
   "main": "seize.js",
   "scripts": {
@@ -16,12 +16,12 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "lodash": "4.11.1"
+    "lodash": "^4.13.1"
   },
   "devDependencies": {
     "chai": "^3.5.0",
     "eslint": "^2.8.0",
-    "jsdom": "^8.4.0",
+    "jsdom": "^9.2.1",
     "mocha": "^2.4.5"
   },
   "keywords": [

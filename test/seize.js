@@ -75,11 +75,6 @@ var testCases = [
     url: 'http://medportal.ru/mednovosti/news/2016/04/21/647insuline/'
   },
   {
-    name: 'meddaily_article',
-    content: /Новая генная терапия способна помочь детям и молодым людям с тяжелым наследственным иммунодефицитом/g,
-    url: 'http://meddaily.ru/article/22apr2016/il2rg'
-  },
-  {
     name: 'novate_article',
     content: /Чтобы куриные ножки получились сочными([.\s\S]*)Подавайте в теплом виде с лимоном/g,
     url: 'http://www.novate.ru/blogs/220416/36050/'
@@ -151,19 +146,89 @@ describe('Seize.Candidate', function() {
 
 
 describe('Seize.utils', function() {
-  var seize;
+  var seize, utils, window;
 
-  beforeEach(function() {
+  var initSeize = function() {
     var pageFile = 'test_utils.html',
         pagePath = path.join(__dirname, 'pages', pageFile),
-        content = fs.readFileSync(pagePath, 'utf8'),
-        window = jsdom(content, jsdomOptions).defaultView;
+        content = fs.readFileSync(pagePath, 'utf8');
+
+    window = jsdom(content, jsdomOptions).defaultView;
 
     seize = new Seize(window.document, {});
+    utils = Seize.utils;
+  }
+
+  describe('#values()', function() {
+    before(initSeize);
+
+    it('should return empty array', function() {
+      assert.ok(Array.isArray(utils.values()));
+      assert.equal(utils.values().length, 0);
+    });
+
+    it('should return array', function() {
+      var test = {
+        a: 1,
+        b: 2,
+        c: 3,
+        '-': 4
+      };
+      var result = utils.values(test);
+      assert.ok(Array.isArray(result));
+      assert.deepEqual(result, [ 1, 2, 3, 4 ]);
+    });
   });
 
-  it('', function() {});
+  describe('#getXPath', function() {
+    before(initSeize);
 
+    it('should return empty', function() {
+      assert.equal(utils.getXPath(), '');
+    });
+
+    it('should return empty (elements set)', function() {
+      var testEl = window.document.getElementsByTagName('article');
+      assert.equal(utils.getXPath(testEl), '');
+    });
+
+
+    it('should return xpath', function() {
+      var testEl = window.document.getElementsByTagName('article')[0];
+      assert.equal(utils.getXPath(testEl), '/html/body/div/article');
+    });
+  });
+
+  describe('#getXPathScore', function() {
+    var testEl,
+        xpath1 = '/html/body/div/article',
+        xpath2 = '/html/body/div[11]/article',
+        xpath3 = '/html/body/div[11]/article[2]/div',
+        xpath4 = '/html';
+
+    before(initSeize);
+
+    it('should return score object', function() {
+      assert.ok(utils.getXPathScore(xpath1));
+      assert.deepEqual(utils.getXPathScore(xpath1), {depth:4,distance:1});
+    });
+
+    it('should return score object', function() {
+      assert.ok(utils.getXPathScore(xpath2));
+      assert.deepEqual(utils.getXPathScore(xpath2), {depth:4,distance:11});
+    });
+
+    it('should return score object', function() {
+      assert.ok(utils.getXPathScore(xpath3));
+      assert.deepEqual(utils.getXPathScore(xpath3), {depth:5,distance:13});
+    });
+
+    it('should return score object', function() {
+      assert.ok(utils.getXPathScore(xpath4));
+      assert.deepEqual(utils.getXPathScore(xpath4), {depth:1,distance:1});
+    });
+
+  });
 });
 
 describe('Seize', function() {
@@ -240,7 +305,7 @@ describe('Seize', function() {
 
       it('sould extract content', function() {
         if ( typeof testContent == 'string' ) {
-          if ( testContent.indexOf('<') == 0 ) {
+          if ( testContent[0] == '<' ) {
             assert.equal( testContent, seize.content().outerHTML );
           } else {
             assert.equal( testContent, seize.text() );
@@ -299,7 +364,7 @@ describe('Seize', function() {
       return file[0].indexOf('.html') > -1;
     });
 
-    files = files.slice(4, 5);
+    // files = files.slice(5, 6);
 
     files.forEach(function(paths) {
       var inputPath  = bulkInputPath + paths[0];
@@ -331,7 +396,8 @@ describe('Seize', function() {
                 .replace(/<([0-9a-z]+)>(.*)/g, '<$1>$2</$1>')
                 .replace(/\s+/g, ' ');
             })
-            .join('');
+            .join('')
+            .replace(/[\n\r]/g, '');
           resultHtml = '<html><head></head><body><div>' + resultHtml + '</div></body></html>';
           result = jsdom(resultHtml, jsdomOptions).defaultView;
           resultText = seize.text(result.document.body);

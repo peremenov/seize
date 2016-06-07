@@ -1,9 +1,6 @@
 'use strict';
 
-var url    = require('url'),
-    extend = require('lodash/extend'),
-    sort   = require('lodash/sortBy'),
-    values = require('lodash/values');
+var url    = require('url');
 
 var removeElementsList  = 'style,script,form,object,embed,link,form,button,input,label';
 var removeAttributesRe  = /^on|^id$|^class|^data-|^style/i;
@@ -11,10 +8,10 @@ var containersUpScoreRe = /article|body|content|page|post|text|main|entry/ig;
 var containersUpScoreSe = 'article,[itemprop="articleBody"],[itemtype="http://www.schema.org/NewsArticle"]';
 var containersDnScoreRe = /counter|image|breadcrumb|combx|comment|contact|disqus|foot|footer|footnote|link|media|meta|mod-conversations|promo|related|scroll|share|shoutbox|sidebar|social|sponsor|tags|toolbox|widget|about/ig;
 var containersDnScoreSe = 'footer,aside,header,nav,menu,ul,a,p,[itemprop="comment"],[itemtype="http://schema.org/Comment"]';
-var containersNotExpect = 'script,dl,ul,ol,h1,h2,h3,h4,h5,h6,figure,a,blockquote';
+var containersNotExpect = 'script,dl,ul,ol,h1,h2,h3,h4,h5,h6,figure,a,blockquote,form';
 var contentTextNodesSe  = 'p,dl,ul,ol,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time,pre,code';
 var contentHeadersSe    = 'h1,h2,h3,h4,h5,h6';
-var contentNotExpect    = 'footer,header,nav,article,section,main';
+var contentNotExpect    = 'footer,header,nav,article,section,main,form';
 var contentLeaveNodes   = 'br,hr,img';
 var elementLinksMap = {
   'a'     : 'href',
@@ -42,7 +39,7 @@ var textScoreDepthPenalty = .1;
 var textScoreLengthPower = 1.25;
 var textDensityPenalty = .2;
 
-var depthFactor = .1;
+var depthFactor = .03;
 var defaultNodeScore = 1;
 
 var defaultOptions = {
@@ -72,6 +69,45 @@ var defaultOptions = {
  * @type {Object}
  */
 var utils = {
+  /**
+   * Creates an array from given object values
+   * @param  {Object} object object to transform
+   * @return {Array}         array from values
+   */
+  values: function(object) {
+    var arr = [],
+        key;
+    for ( key in object )
+      if ( object.hasOwnProperty(key) )
+        arr.push(object[key]);
+    return arr;
+  },
+  /**
+   * Extend object
+   * @param  {Object} target target object
+   * @param  {Object} extend extend objects
+   * @return {Object}        object
+   */
+  extend: function() {
+    var result = arguments[0],
+        extend,
+        prop,
+        props,
+        i, l = arguments.length;
+
+    if ( l < 2 )
+      return result;
+
+    for ( i = 1; i < l; i++ ) {
+      extend = arguments[i];
+      if ( typeof extend == 'object' ) {
+        for ( prop in extend )
+          if ( extend.hasOwnProperty(prop) )
+            result[prop] = extend[prop];
+      }
+    }
+    return result;
+  },
   /**
    * Shows XPath for given Node element
    * @param  {Node} element Node element
@@ -181,7 +217,7 @@ var Candidate = function(seize, node) {
   self.textLength  = self.seize.text(self.node).length;
   self.textScore   = self.getTextScore();
 
-  self.totalScore = Math.pow(self.nodeScore, self.textDensity * self.textScore);
+  self.totalScore = Math.pow( (self.textLength / self.textDensity) * self.textScore, self.nodeScore);
 };
 
 Candidate.prototype.isMatchStandart = function () {
@@ -214,7 +250,10 @@ Candidate.prototype.getNodeScore = function (node) {
   if ( !node || !node.parentNode )
     return score;
 
-  result = depth * distance * depthFactor;
+  if ( node !== self.node )
+    score = 0;
+
+  result = depth * depthFactor;
 
   if ( containersUpScoreRe.test(node.className) || containersUpScoreRe.test(node.id) || node.matches(containersUpScoreSe) )
     score += result;
@@ -341,9 +380,9 @@ Candidate.prototype.prepareContent = function () {
 Candidate.prototype.isMatchRequirements = function () {
   var self = this;
   return self.isMatchStandart()
-      && self.textLength > minCandidateTextLength
-      && self.totalScore > minCandidateTotalScore
-      && self.nodeScore > minCandidateNodeScore;
+      && self.textLength >= minCandidateTextLength
+      && self.totalScore >= minCandidateTotalScore
+      && self.nodeScore >= minCandidateNodeScore;
 };
 
 /**
@@ -362,7 +401,7 @@ var Seize = function(doc, options) {
   }
 
   self.doc     = doc;
-  self.options = extend({}, defaultOptions, options);
+  self.options = utils.extend({}, defaultOptions, options);
   self.url     = self.options.url || self.getPageUrl() || '';
   self.article = self.content();
 
@@ -443,7 +482,7 @@ Seize.prototype.text = function (node) {
     childNode = childNodes[i];
     if ( childNode.nodeType == 3 ) {
       if ( /\S/.test(childNode.textContent) )
-        text += childNode.textContent;
+        text += childNode.textContent.trim();
     } else {
       text += self.text(childNode);
 
@@ -498,19 +537,21 @@ Seize.prototype.content = function () {
     }
   }
 
-  candidates = values(candidates)
+  candidates = utils.values(candidates)
     .filter(function(candidate) {
       return candidate.isMatchRequirements();
+    })
+    .sort(function(c1, c2) {
+      return c1.totalScore - c2.totalScore;
     });
-  candidates = sort(candidates, function(candidate) {
-    return candidate.totalScore;
-  });
 
   if ( !candidates.length )
     return null;
 
   result = candidates[candidates.length-1];
-  return self.article = result.prepareContent();
+  self.article = result.prepareContent();
+
+  return self.article;
 };
 
 Seize.Seize     = Seize;

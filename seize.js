@@ -9,7 +9,10 @@ var containersUpScoreSe = 'article,[itemprop="articleBody"],[itemtype="http://ww
 var containersDnScoreRe = /counter|image|breadcrumb|combx|comment|contact|disqus|foot|footer|footnote|link|media|meta|mod-conversations|promo|related|scroll|share|shoutbox|sidebar|social|sponsor|tags|toolbox|widget|about/ig;
 var containersDnScoreSe = 'footer,aside,header,nav,menu,ul,a,p,[itemprop="comment"],[itemtype="http://schema.org/Comment"]';
 var containersNotExpect = 'script,dl,ul,ol,h1,h2,h3,h4,h5,h6,figure,a,blockquote,form';
-var contentTextNodesSe  = 'p,dl,ul,ol,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time,pre,code';
+var contentTextNodesSe  = 'p,dl,ul,ol,li,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time,pre,code';
+var contentBreakNodesSe = 'br,hr,li,div,tr,dt,dd';
+var contentCarrNodesSe  = 'p,dl,ul,ol,h1,h2,h3,h4,h5,h6,hr,figure,blockquote,code,pre,table';
+var contentIgnoreNodesSe= 'img';
 var contentHeadersSe    = 'h1,h2,h3,h4,h5,h6';
 var contentNotExpect    = 'footer,header,nav,article,section,main,form';
 var contentLeaveNodes   = 'br,hr,img';
@@ -30,7 +33,7 @@ var elementLinksMap = {
 
 var protocolTestRe = /^http|^https/;
 
-var minCandidateTotalScore = 0;
+var minCandidateTotalScore = 1000;
 var minCandidateNodeScore = 0;
 var minCandidateTextLength = 100;
 var minNodeTextLength = 15;
@@ -140,8 +143,13 @@ var utils = {
    * @return {Number}       score
    */
   getXPathScore: function(xpath) {
-    var depth    = xpath.split('/').length,
-        distance = xpath.match(/\[(\d+)\]/g);
+    var depth, distance;
+
+    if ( !xpath || typeof xpath != 'string' )
+      return null;
+
+    depth    = xpath.split('/').length;
+    distance = xpath.match(/\[(\d+)\]/g);
 
     if ( distance && distance.length ) {
       distance = distance.reduce(function(memo, item) {
@@ -404,6 +412,7 @@ var Seize = function(doc, options) {
   self.options = utils.extend({}, defaultOptions, options);
   self.url     = self.options.url || self.getPageUrl() || '';
   self.article = self.content();
+  self.result  = null;
 
   self.log( 'xpath   ', utils.getXPath(self.article) );
   self.log( 'article ', self.article && self.article.outerHTML );
@@ -457,6 +466,13 @@ Seize.prototype.resolveUrl = function(path) {
   return url.resolve(u, path);
 };
 
+var shouldAddBreaks = function(text, count) {
+  var len = text.length - 1;
+
+  for ( var l = len; l >= 0 && l >= len - count && text[l] == '\n'; l-- );
+  return l >= len - count;
+};
+
 /**
  * Returns clean text. `<p>`, `<li>`, etc. replacing by `\n\n`
  * @param  {(Node|Candidate)} node    article node or child node
@@ -484,12 +500,12 @@ Seize.prototype.text = function (node) {
       if ( /\S/.test(childNode.textContent) )
         text += childNode.textContent.trim();
     } else {
-      text += self.text(childNode);
+      if ( childNode.nodeType == 1 && !childNode.matches(contentIgnoreNodesSe)) {
+        text += self.text(childNode);
 
-      if ( childNode.nodeType == 1 ) {
-        if ( childNode.tagName == 'BR' || childNode.tagName == 'HR' )
+        if ( childNode.matches(contentBreakNodesSe) && shouldAddBreaks(text, 1) )
           text += '\n';
-        else if ( childNode.matches(contentTextNodesSe) )
+        else if ( childNode.matches(contentCarrNodesSe) && shouldAddBreaks(text, 2) )
           text += '\n\n';
       }
     }
@@ -548,7 +564,7 @@ Seize.prototype.content = function () {
   if ( !candidates.length )
     return null;
 
-  result = candidates[candidates.length-1];
+  self.result  = result = candidates[candidates.length-1];
   self.article = result.prepareContent();
 
   return self.article;

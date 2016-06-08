@@ -114,6 +114,11 @@ var testCases = [
     content: /Audi has performed a series of visual and technical updates([.\s\S]*)with deliveries to begin this summer/g,
     url: 'http://www.carscoops.com/2016/04/audi-updates-a6-and-a7-for-2017my.html'
   },
+  {
+    name: '3dnews',
+    content: /В нынешнем году темпы роста мирового([.\s\S]*)мобильных устройств и платформ\./g,
+    url: 'http://www.3dnews.ru/934306'
+  },
 
 ];
 
@@ -180,11 +185,15 @@ describe('Seize.utils', function() {
     });
   });
 
-  describe('#getXPath', function() {
+  describe('#getXPath()', function() {
     before(initSeize);
 
     it('should return empty', function() {
       assert.equal(utils.getXPath(), '');
+    });
+
+    it('should return empty (null)', function() {
+      assert.equal(utils.getXPath(null), '');
     });
 
     it('should return empty (elements set)', function() {
@@ -192,14 +201,13 @@ describe('Seize.utils', function() {
       assert.equal(utils.getXPath(testEl), '');
     });
 
-
     it('should return xpath', function() {
       var testEl = window.document.getElementsByTagName('article')[0];
       assert.equal(utils.getXPath(testEl), '/html/body/div/article');
     });
   });
 
-  describe('#getXPathScore', function() {
+  describe('#getXPathScore()', function() {
     var testEl,
         xpath1 = '/html/body/div/article',
         xpath2 = '/html/body/div[11]/article',
@@ -207,6 +215,18 @@ describe('Seize.utils', function() {
         xpath4 = '/html';
 
     before(initSeize);
+
+    it('not a xpath (null)', function() {
+      assert.equal(utils.getXPathScore(null), null);
+    });
+
+    it('not a xpath (object)', function() {
+      assert.equal(utils.getXPathScore({}), null);
+    });
+
+    it('not a xpath', function() {
+      assert.equal(utils.getXPathScore(), null);
+    });
 
     it('should return score object', function() {
       assert.ok(utils.getXPathScore(xpath1));
@@ -311,6 +331,7 @@ describe('Seize', function() {
             assert.equal( testContent, seize.text() );
           }
         } else if ( testContent instanceof RegExp ) {
+          console.log(seize.text());
           assert.ok( testContent.test(seize.text()) );
         } else {
           assert.equal( testContent, seize.content() );
@@ -333,6 +354,8 @@ describe('Seize', function() {
     });
 
   });
+
+  return;
 
   var text2array = function(text) {
     return text
@@ -407,21 +430,27 @@ describe('Seize', function() {
         testArray   = text2array(testText);
         resultArray = text2array(resultText);
 
-        // console.log(seize.article.node.outerHTML);
+        if ( !resultHtml ) {
+          seize.content();
+          assert.equal(seize.result, null);
+          return;
+        }
 
-        // console.log(testText);
-        // console.log('################################################');
-        // console.log(resultArray);
-
-        var score = testArray.reduce(function(memo, item, index) {
+        var score1 = testArray.reduce(function(memo, item, index) {
           if ( resultArray.indexOf(item) >= index )
             memo++;
           return memo;
         }, 0);
 
-        var rate = score/testArray.length;
+        var score2 = resultArray.reduce(function(memo, item, index) {
+          if ( testArray.indexOf(item) >= index )
+            memo++;
+          return memo;
+        }, 0);
 
-        assert.approximately(rate, 1, 0.3);
+        var rate = (score1 + score2) / (resultArray.length + testArray.length);
+
+        assert.approximately(rate, 0.9, 0.1);
       });
     });
 

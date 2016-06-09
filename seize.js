@@ -474,7 +474,7 @@ var shouldAddBreaks = function(text, count) {
 };
 
 /**
- * Returns clean text. `<p>`, `<li>`, etc. replacing by `\n\n`
+ * Returns clean text. Block tags replacing by `\n`
  * @param  {(Node|Candidate)} node    article node or child node
  * @return {String} clean text of readable article
  */
@@ -515,7 +515,7 @@ Seize.prototype.text = function (node) {
 };
 
 /**
- * Returns document title text or content of first "h1,h2,h3" tag
+ * Returns document title text or content of first `h1,h2,h3` tags
  * @return {String} title text
  */
 Seize.prototype.title = function () {

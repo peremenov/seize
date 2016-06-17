@@ -30,7 +30,7 @@ var testCases = [
   // },
   // {
   //   name: 'cnet_main',
-  //   content: null,
+  //   content: /Latest stories \n\nB&O Play\'s Beoplay A1 mini Bluetooth([.\s\S]*)/g,
   //   url: 'http://www.cnet.com/'
   // },
   {
@@ -96,7 +96,7 @@ var testCases = [
   },
   {
     name: 'iphonehacks',
-    content: /Apple co-founder ([.\s\S]*)via the link below/g,
+    content: /Apple co-founder Steve Wozniak believes ([.\s\S]*)via the link below/g,
     url: 'http://www.iphonehacks.com/2016/04/steve-wozniak-believes-apple-should-pay-same-50-tax-rate-he-does.html'
   },
   {
@@ -331,7 +331,7 @@ describe('Seize', function() {
             assert.equal( testContent, seize.text() );
           }
         } else if ( testContent instanceof RegExp ) {
-          console.log(seize.text());
+          // console.log(seize.text());
           assert.ok( testContent.test(seize.text()) );
         } else {
           assert.equal( testContent, seize.content() );
@@ -355,7 +355,7 @@ describe('Seize', function() {
 
   });
 
-  return;
+  // return;
 
   var text2array = function(text) {
     return text

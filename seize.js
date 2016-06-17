@@ -2,15 +2,15 @@
 
 var url    = require('url');
 
-var removeElementsList  = 'style,script,form,object,embed,link,form,button,input,label';
+var removeElementsList  = 'style,noscript,script,form,object,embed,link,form,button,input,label';
 var removeAttributesRe  = /^on|^id$|^class|^data-|^style/i;
 var containersUpScoreRe = /article|body|content|page|post|text|main|entry/ig;
 var containersUpScoreSe = 'article,[itemprop="articleBody"],[itemtype="http://www.schema.org/NewsArticle"]';
 var containersDnScoreRe = /counter|image|breadcrumb|combx|comment|contact|disqus|foot|footer|footnote|link|media|meta|mod-conversations|promo|related|scroll|share|shoutbox|sidebar|social|sponsor|tags|toolbox|widget|about/ig;
 var containersDnScoreSe = 'footer,aside,header,nav,menu,ul,a,p,[itemprop="comment"],[itemtype="http://schema.org/Comment"]';
-var containersNotExpect = 'script,dl,ul,ol,h1,h2,h3,h4,h5,h6,figure,a,blockquote,form';
+var containersNotExpect = 'noscript,script,dl,ul,ol,h1,h2,h3,h4,h5,h6,figure,a,blockquote,form';
 var contentTextNodesSe  = 'p,dl,ul,ol,li,h1,h2,h3,h4,h5,h6,hr,br,figure,blockquote,b,strong,i,em,del,time,pre,code';
-var contentBreakNodesSe = 'br,hr,li,div,tr,dt,dd';
+var contentBreakNodesSe = 'br,hr,li,div,tr,dt,dd,img';
 var contentCarrNodesSe  = 'p,dl,ul,ol,h1,h2,h3,h4,h5,h6,hr,figure,blockquote,code,pre,table';
 var contentIgnoreNodesSe= 'img';
 var contentHeadersSe    = 'h1,h2,h3,h4,h5,h6';
@@ -480,6 +480,7 @@ var shouldAddBreaks = function(text, count) {
  */
 Seize.prototype.text = function (node) {
   var text = '',
+      textAdd = '',
       self = this,
       childNode,
       childNodes;
@@ -496,17 +497,27 @@ Seize.prototype.text = function (node) {
 
   for ( var i = 0; i < childNodes.length; i++ ) {
     childNode = childNodes[i];
+    textAdd   = '';
+
     if ( childNode.nodeType == 3 ) {
       if ( /\S/.test(childNode.textContent) )
         text += childNode.textContent.trim();
-    } else {
-      if ( childNode.nodeType == 1 && !childNode.matches(contentIgnoreNodesSe)) {
-        text += self.text(childNode);
 
-        if ( childNode.matches(contentBreakNodesSe) && shouldAddBreaks(text, 1) )
-          text += '\n';
-        else if ( childNode.matches(contentCarrNodesSe) && shouldAddBreaks(text, 2) )
-          text += '\n\n';
+      if ( childNode.nextSibling )
+        text += ' ';
+    } else {
+      if ( childNode.nodeType == 1 ) {
+        if ( !childNode.matches(contentIgnoreNodesSe) )
+          textAdd = self.text(childNode);
+
+        if ( textAdd.trim() ) {
+          if ( childNode.matches(contentBreakNodesSe) && shouldAddBreaks(text, 1) )
+            textAdd += '\n';
+          else if ( childNode.matches(contentCarrNodesSe) && shouldAddBreaks(text, 2) )
+            textAdd += '\n\n';
+
+          text += textAdd;
+        }
       }
     }
   }

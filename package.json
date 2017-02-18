@@ -15,14 +15,14 @@
     "Kir Peremenov <kirill@peremenov.com> (https://peremenov.com)"
   ],
   "license": "MIT",
-  "dependencies": {
-    "lodash": "^4.13.1"
-  },
   "devDependencies": {
-    "chai": "^3.5.0",
-    "eslint": "^2.8.0",
-    "jsdom": "^9.2.1",
-    "mocha": "^2.4.5"
+    "chai": "3.5.0",
+    "eslint": "3.15.0",
+    "eslint-config-airbnb-base": "11.1.0",
+    "eslint-plugin-import": "2.2.0",
+    "jsdom": "9.2.1",
+    "mocha": "3.2.0",
+    "lodash": "4.13.1"
   },
   "keywords": [
     "dom",

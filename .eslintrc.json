@@ -3,33 +3,12 @@
     "shared-node-browser": true,
     "commonjs": true
   },
-  "extends": "eslint:recommended",
+  "extends": "airbnb-base",
   "rules": {
     "indent": [
       "warn",
       2,
-      { "VariableDeclarator": 2 }
-    ],
-    "linebreak-style": [
-      "error",
-      "unix"
-    ],
-    "quotes": [
-      "error",
-      "single"
-    ],
-    "semi": [
-      "error",
-      "always"
-    ],
-    "valid-jsdoc": [
-      "error"
-    ],
-    "linebreak-style": [
-      "error",
-      "unix"
-    ],
-    "no-inline-comments": "error",
-    "semi-spacing": "error"
+      { "VariableDeclarator": { "var": 2, "let": 2, "const": 3 } }
+    ]
   }
 }

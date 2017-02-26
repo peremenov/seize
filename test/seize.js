@@ -1,23 +1,23 @@
-var Seize  = require('..'),
-    jsdom  = require('jsdom').jsdom,
-    assert = require('chai').assert,
-    path   = require('path'),
-    fs     = require('fs'),
-    _      = require('lodash');
+const Seize = require('..');
+const jsdom = require('jsdom').jsdom;
+const assert = require('chai').assert;
+const path = require('path');
+const fs = require('fs');
+const { beforeEach, describe, it } = require('mocha');
 
 
-var bulkPath = __dirname + '/pages-bulk';
-var bulkInputPath  = bulkPath + '/input/';
-var bulkResultPath = bulkPath + '/result/';
+const bulkPath = `${__dirname}/pages-bulk`;
+const bulkInputPath = `${bulkPath}/input/`;
+const bulkResultPath = `${bulkPath}/result/`;
 
-var jsdomOptions = {
+const jsdomOptions = {
   features: {
     FetchExternalResources: [],
-    ProcessExternalResources: false
-  }
+    ProcessExternalResources: false,
+  },
 };
 
-var testCases = [
+const testCases = [
   // {
   //   name: 'cnet_list',
   //   content: null,
@@ -123,13 +123,13 @@ var testCases = [
 ];
 
 describe('Seize.Candidate', function() {
-  var seize;
+  let seize;
 
-  beforeEach(function() {
-    var pageFile = 'test_candidate.html',
-        pagePath = path.join(__dirname, 'pages', pageFile),
-        content = fs.readFileSync(pagePath, 'utf8'),
-        window = jsdom(content, jsdomOptions).defaultView;
+  beforeEach(() => {
+    const pageFile = 'test_candidate.html';
+    const pagePath = path.join(__dirname, 'pages', pageFile);
+    const content = fs.readFileSync(pagePath, 'utf8');
+    const window = jsdom(content, jsdomOptions).defaultView;
 
     seize = new Seize(window.document, {});
   });
@@ -150,23 +150,22 @@ describe('Seize.Candidate', function() {
 });
 
 
-describe('Seize.utils', function() {
-  var seize, utils, window;
+describe.only('Seize.utils', function() {
+  let seize, utils, window;
 
-  var initSeize = function() {
-    var pageFile = 'test_utils.html',
-        pagePath = path.join(__dirname, 'pages', pageFile),
-        content = fs.readFileSync(pagePath, 'utf8');
+  beforeEach(() => {
+    const pageFile = 'test_utils.html';
+    const pagePath = path.join(__dirname, 'pages', pageFile);
+    const content = fs.readFileSync(pagePath, 'utf8');
 
     window = jsdom(content, jsdomOptions).defaultView;
 
     seize = new Seize(window.document, {});
+
     utils = Seize.utils;
-  }
+  });
 
   describe('#values()', function() {
-    before(initSeize);
-
     it('should return empty array', function() {
       assert.ok(Array.isArray(utils.values()));
       assert.equal(utils.values().length, 0);
@@ -186,8 +185,6 @@ describe('Seize.utils', function() {
   });
 
   describe('#getXPath()', function() {
-    before(initSeize);
-
     it('should return empty', function() {
       assert.equal(utils.getXPath(), '');
     });
@@ -213,8 +210,6 @@ describe('Seize.utils', function() {
         xpath2 = '/html/body/div[11]/article',
         xpath3 = '/html/body/div[11]/article[2]/div',
         xpath4 = '/html';
-
-    before(initSeize);
 
     it('not a xpath (null)', function() {
       assert.equal(utils.getXPathScore(null), null);

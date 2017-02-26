@@ -95,14 +95,14 @@ const utils = {
       return result;
     }
 
-    for (let i = 1; i < l; i++) {
-      let extend = args[i];
+    for (let i = 1; i < l; i += 1) {
+      const extend = args[i];
       if (typeof extend === 'object') {
-        for (let prop in extend) {
-          if (Object.prototype.hasOwnProperty.call(extend, prop)) {
+        Object.keys(extend)
+          .filter(prop => Object.prototype.hasOwnProperty.call(extend, prop))
+          .forEach((prop) => {
             result[prop] = extend[prop];
-          }
-        }
+          });
       }
     }
     return result;
@@ -113,26 +113,34 @@ const utils = {
    * @return {String}       XPath string
    */
   getXPath(element) {
-    let xpath = '';
-    for (; element && element.nodeType == 1; element = element.parentNode) {
-      let tagName = element.tagName,
-          sibling = element,
-          index = 1,
-          id = '',
-          cls = '';
+    const pathElements = [];
+    let el = element;
 
-      while ((sibling = sibling.previousSibling) != null) {
-        if (sibling.tagName == tagName) index++;
-      }
-
-      index = index > 1 ? `[${index}]` : '';
-      if (!id) {
-        xpath = `/${tagName.toLowerCase()}${index}${cls}${xpath}`;
-      } else {
-        return xpath = id + xpath;
-      }
+    for (; el && el.nodeType === 1;) {
+      el = el.parentNode;
+      pathElements.push(el);
     }
-    return xpath;
+
+    return pathElements
+      .reverse()
+      .map((e) => {
+        const tagName = e.tagName;
+        let index = 1;
+
+        let sibling = e.previousSibling;
+
+        while (sibling != null) {
+          sibling = sibling.previousSibling;
+          if (sibling.tagName === tagName) {
+            index += 1;
+          }
+        }
+
+        index = index > 1 ? `[${index}]` : '';
+
+        return `${tagName.toLowerCase()}${index}`;
+      })
+      .join('/');
   },
 
   /**
@@ -141,22 +149,23 @@ const utils = {
    * @return {Number}       score
    */
   getXPathScore(xpath) {
-    let depth,
-        distance;
+    let distance;
 
-    if (!xpath || typeof xpath !== 'string') { return null; }
+    if (!xpath || typeof xpath !== 'string') {
+      return null;
+    }
 
-    depth = xpath.split('/').length;
+    const depth = xpath.split('/').length - 1;
     distance = xpath.match(/\[(\d+)\]/g);
 
     if (distance && distance.length) {
-      distance = distance.reduce((memo, item) => memo + parseInt(item.match(/(\d)+/g)[0]), 0);
+      distance = distance.reduce((memo, item) => memo + parseInt(item.match(/(\d)+/g)[0], 10), 0);
     } else {
       distance = 1;
     }
 
     return {
-      depth: depth - 1,
+      depth,
       distance,
     };
   },
@@ -175,26 +184,38 @@ const utils = {
   /**
    * Cleaning up empty nodes recursively
    * @param  {Node} node  target DOM-node
-   * @return {Void}       none
+   * @return {(Number|null)}       none
    */
   cleanUpEmpty(node) {
-    if (node.childNodes.length == 0) { return; }
-    for (let n = node.childNodes.length - 1; n >= 0; n--) {
+    if (node.childNodes.length === 0) {
+      return null;
+    }
+
+    let removed = 0;
+
+    for (let n = node.childNodes.length - 1; n >= 0; n -= 1) {
       const child = node.childNodes[n];
       if (child.nodeType === 8 || (child.nodeType === 3 && !/\S/.test(child.nodeValue))) {
         node.removeChild(child);
       } else if (child.nodeType === 1) {
-        utils.cleanUpEmpty(child);
-        if (child.childNodes.length == 0 && !child.matches(contentLeaveNodes)) { node.removeChild(child); }
+        removed += utils.cleanUpEmpty(child);
+
+        if (child.childNodes.length === 0 && !child.matches(contentLeaveNodes)) {
+          node.removeChild(child);
+          removed += 1;
+        }
       }
     }
+
+    return removed;
   },
 };
 
 function shouldAddBreaks(text, count) {
   const len = text.length - 1;
+  let l;
 
-  for (var l = len; l >= 0 && l >= len - count && text[l] == '\n'; l--);
+  for (l = len; l >= 0 && l >= len - count && text[l] === '\n'; l -= 1);
   return l >= len - count;
 }
 
@@ -206,8 +227,6 @@ function shouldAddBreaks(text, count) {
  */
 class Candidate {
   constructor(seize, node) {
-    if (!(seize instanceof Seize)) { throw new Error('Argument must be Seize'); }
-
     if (!node) { throw new Error('DOM node must be defined'); }
 
     this.node = node;
@@ -222,12 +241,12 @@ class Candidate {
     this.textLength = this.seize.text(this.node).length;
     this.textScore = this.getTextScore();
 
-    this.totalScore = Math.pow((this.textLength / this.textDensity) * this.textScore, this.nodeScore);
+    this.totalScore = ((this.textLength / this.textDensity) * this.textScore) ** this.nodeScore;
   }
 
   isMatchStandart() {
     const node = this.node;
-    return node.querySelectorAll(contentNotExpect).length == 0 && utils.isExpectContainers(node);
+    return node.querySelectorAll(contentNotExpect).length === 0 && utils.isExpectContainers(node);
   }
 
   checkParentNodeScore(node) {
@@ -239,16 +258,16 @@ class Candidate {
 
   /**
    * Setting node score recursively. Closer nodes should more impact to score.
-   * @param  {Node} node   target DOM-node
+   * @param  {Node} checkingNode   target DOM-node
    * @return {Number}      score number
    */
-  getNodeScore(node) {
+  getNodeScore(checkingNode) {
     const { xpathScore } = this;
-    const { depth, distance } = xpathScore;
+    const { depth } = xpathScore;
     const result = depth * depthFactor;
-    let score = defaultNodeScore;
+    const node = checkingNode || this.node;
 
-    node = node || this.node;
+    let score = defaultNodeScore;
 
     if (!node || !node.parentNode) {
       return score;
@@ -258,11 +277,19 @@ class Candidate {
       score = 0;
     }
 
-    if (containersUpScoreRe.test(node.className) || containersUpScoreRe.test(node.id) || node.matches(containersUpScoreSe)) {
+    if (
+      containersUpScoreRe.test(node.className) ||
+      containersUpScoreRe.test(node.id) ||
+      node.matches(containersUpScoreSe)
+    ) {
       score += result;
     }
 
-    if (containersDnScoreRe.test(node.className) || containersDnScoreRe.test(node.id) || node.matches(containersDnScoreSe)) {
+    if (
+      containersDnScoreRe.test(node.className) ||
+      containersDnScoreRe.test(node.id) ||
+      node.matches(containersDnScoreSe)
+    ) {
       score -= result;
     }
 
@@ -270,11 +297,10 @@ class Candidate {
   }
 
   getTextNodeScore(node) {
-    let self = this,
-        parent = null,
-        multiplier = 1;
+    let parent;
+    let multiplier = 1;
 
-    if (!node || node.nodeType != 3) {
+    if (!node || node.nodeType !== 3) {
       return 0;
     }
 
@@ -289,15 +315,15 @@ class Candidate {
       multiplier -= textScoreDepthPenalty;
     }
 
-    return Math.pow(len * multiplier, textScoreLengthPower);
+    return (len * multiplier) ** textScoreLengthPower;
   }
 
   getTextScore() {
-    let self = this,
-        textNodes = self.node.querySelectorAll(contentTextNodesSe),
-        score = 0;
+    const self = this;
+    const textNodes = self.node.querySelectorAll(contentTextNodesSe);
+    let score = 0;
 
-    for (let i = 0, l = textNodes.length; i < l; i++) {
+    for (let i = 0, l = textNodes.length; i < l; i += 1) {
       if (textNodes[i].childNodes.length) {
         score += self.getTextNodeScore(textNodes[i].childNodes[0]);
       }
@@ -307,17 +333,21 @@ class Candidate {
   }
 
   getTextDensity() {
-    let self = this,
-        contentNodes = self.node.childNodes,
-        score = 1,
-        next,
-        node;
+    const self = this;
+    const contentNodes = self.node.childNodes;
+    let score = 1;
+    let next;
+    let node;
 
-    for (let i = 0, l = contentNodes.length; i < l; i++) {
+    for (let i = 0, l = contentNodes.length; i < l; i += 1) {
       node = contentNodes[i];
       next = node.nextSibling;
       if (node && node.nextSibling) {
-        if (next.nodeType == 3 || (next.nodeType == 1 && next.matches(contentTextNodesSe))) { score += textDensityPenalty; } else { score -= textDensityPenalty; }
+        if (next.nodeType === 3 || (next.nodeType === 1 && next.matches(contentTextNodesSe))) {
+          score += textDensityPenalty;
+        } else {
+          score -= textDensityPenalty;
+        }
       }
     }
 
@@ -329,50 +359,51 @@ class Candidate {
    * @return {Node}           ready article
    */
   prepareContent() {
-    let self = this,
-        article = self.node,
-        removeNodes = article.querySelectorAll(removeElementsList),
-        resolveUrlNodes = article.querySelectorAll(Object.keys(elementLinksMap).join(',')),
-        allNodes = article.querySelectorAll('*'),
-        node,
-        attr,
-        i,
-        j,
-        l;
+    const article = this.node;
+    const removeNodes = article.querySelectorAll(removeElementsList);
+    const resolveUrlNodes = article.querySelectorAll(Object.keys(elementLinksMap).join(','));
+    const allNodes = article.querySelectorAll('*');
+    let node;
+    let attr;
+    let i;
+    let j;
+    let l;
 
-    const setAttribute = function (attr, node) {
-      const url = node.getAttribute(attr);
-      if (url) { node.setAttribute(attr, self.seize.resolveUrl(url)); }
-    };
-
-    const removeAttribute = function (attr, node) {
-      if (attr && removeAttributesRe.test(attr)) {
-        node.removeAttribute(attr);
+    const setAttribute = ({ a, n }) => {
+      const u = n.getAttribute(a);
+      if (u) {
+        n.setAttribute(a, this.seize.resolveUrl(u));
       }
     };
 
-    for (i = removeNodes.length - 1; i >= 0; i--) {
+    const removeAttribute = (a, n) => {
+      if (a && removeAttributesRe.test(a)) {
+        n.removeAttribute(a);
+      }
+    };
+
+    for (i = removeNodes.length - 1; i >= 0; i -= 1) {
       removeNodes[i].parentNode.removeChild(removeNodes[i]);
     }
 
-    for (i = article.attributes.length - 1; i >= 0; i--) {
+    for (i = article.attributes.length - 1; i >= 0; i -= 1) {
       removeAttribute(article.attributes[i].nodeName, article);
     }
 
-    for (i = allNodes.length - 1; i >= 0; i--) {
+    for (i = allNodes.length - 1; i >= 0; i -= 1) {
       node = allNodes[i];
-      for (j = node.attributes.length - 1; j >= 0; j--) {
+      for (j = node.attributes.length - 1; j >= 0; j -= 1) {
         removeAttribute(node.attributes[j].nodeName, node);
       }
     }
 
-    for (i = 0, l = resolveUrlNodes.length; i < l; i++) {
+    for (i = 0, l = resolveUrlNodes.length; i < l; i += 1) {
       node = resolveUrlNodes[i];
       attr = elementLinksMap[node.tagName.toLowerCase()];
-      if (attr instanceof Array) {
-        attr.forEach((attr) => {
-          setAttribute(attr, node);
-        });
+      if (attr && attr.length) {
+        attr
+          .map(a => ({ a, node }))
+          .forEach(setAttribute);
       } else {
         setAttribute(attr, node);
       }
@@ -388,17 +419,17 @@ class Candidate {
    * @return {Boolean} true/false
    */
   isMatchRequirements() {
-    const self = this;
-    return self.isMatchStandart()
-      && self.textLength >= minCandidateTextLength
-      && self.totalScore >= minCandidateTotalScore
-      && self.nodeScore >= minCandidateNodeScore;
+    return this.isMatchStandart()
+      && this.textLength >= minCandidateTextLength
+      && this.totalScore >= minCandidateTotalScore
+      && this.nodeScore >= minCandidateNodeScore;
   }
 }
 
 /**
  * Seize object
- * `options.url` needs to resolve relative links. If url is empty it will try to determine automaticly.
+ * `options.url` needs to resolve relative links. If url is empty it will try
+to detect automaticly.
  * `options.log` get function to log events with `this.log`
  * @param {(Node|Document)} doc       DOM-document object
  * @param {Object} options            readability options
@@ -406,29 +437,28 @@ class Candidate {
  */
 class Seize {
   constructor(doc, options) {
-    const self = this;
-
     if (!doc) {
       throw new Error('Argument must be Document or Node');
     }
 
-    self.doc = doc;
-    self.options = utils.extend({}, defaultOptions, options);
-    self.url = self.options.url || self.getPageUrl() || '';
-    self.article = self.content();
-    self.result = null;
+    this.doc = doc;
+    this.options = utils.extend({}, defaultOptions, options);
+    this.url = this.options.url || this.getPageUrl() || '';
+    this.article = this.content();
+    this.result = null;
 
-    self.log('xpath   ', utils.getXPath(self.article));
-    self.log('article ', self.article && self.article.outerHTML);
+    this.log('xpath   ', utils.getXPath(this.article));
+    this.log('article ', this.article && this.article.outerHTML);
   }
 
   /**
    * Log events by function defined in `options.log`
-   * @return {Void} none
+   * @return {void} none
    */
-  log() {
-    const self = this;
-    if (typeof self.options.log === 'function') { self.options.log.apply(self, arguments); }
+  log(...args) {
+    if (typeof this.options.log === 'function') {
+      this.options.log.apply(this, args);
+    }
   }
 
   /**
@@ -436,9 +466,8 @@ class Seize {
    * @return {String}  document url
    */
   getPageUrl() {
-    let self = this,
-        doc = self.doc,
-        el = doc.querySelector('link[rel="canonical"]');
+    const doc = this.doc;
+    let el = doc.querySelector('link[rel="canonical"]');
 
     if (el) {
       return el.getAttribute('href');
@@ -449,7 +478,6 @@ class Seize {
     if (el) {
       return el.getAttribute('content');
     }
-
 
     return '';
   }
@@ -462,7 +490,9 @@ class Seize {
   resolveUrl(path) {
     const u = this.url;
 
-    if (!u || typeof path !== 'string' || /^#/.test(path) || protocolTestRe.test(path)) { return path; }
+    if (!u || typeof path !== 'string' || /^#/.test(path) || protocolTestRe.test(path)) {
+      return path;
+    }
 
     if (path.match(/^javascript:/)) {
       return '';
@@ -473,49 +503,45 @@ class Seize {
 
   /**
    * Returns clean text. Block tags replacing by `\n`
-   * @param  {(Node|Candidate)} node    article node or child node
+   * @param  {(Node|Candidate)} n    article node or child node
    * @return {String} clean text of readable article
    */
-  text(node) {
-    let text = '',
-        textAdd = '',
-        self = this,
-        childNode,
-        childNodes;
+  text(n) {
+    let text = '';
+    let textAdd = '';
+    let childNode;
 
-    node = node || self.article;
+    let node = n || this.article;
 
-    if (node instanceof Candidate) { node = node.node; }
+    if (node instanceof Candidate) {
+      node = node.node;
+    }
 
     if (!node) { return ''; }
 
-    childNodes = node.childNodes;
+    const childNodes = node.childNodes;
 
-    for (let i = 0; i < childNodes.length; i++) {
+    for (let i = 0; i < childNodes.length; i += 1) {
       childNode = childNodes[i];
       textAdd = '';
 
-      if (childNode.nodeType == 3) {
+      if (childNode.nodeType === 3) {
         if (/\S/.test(childNode.textContent)) { text += childNode.textContent.trim(); }
 
         if (childNode.nextSibling) { text += ' '; }
-      } else {
-        if (childNode.nodeType == 1) {
-          if (!childNode.matches(contentIgnoreNodesSe)) {
-            textAdd = self.text(childNode);
+      } else if (childNode.nodeType === 1) {
+        if (!childNode.matches(contentIgnoreNodesSe)) {
+          textAdd = this.text(childNode);
+        }
+
+        if (textAdd.trim()) {
+          if (childNode.matches(contentBreakNodesSe) && shouldAddBreaks(text, 1)) {
+            textAdd += '\n';
+          } else if (childNode.matches(contentCarrNodesSe) && shouldAddBreaks(text, 2)) {
+            textAdd += '\n\n';
           }
 
-          if (textAdd.trim()) {
-            if (childNode.matches(contentBreakNodesSe) && shouldAddBreaks(text, 1)) {
-              textAdd += '\n';
-            } else {
-              if (childNode.matches(contentCarrNodesSe) && shouldAddBreaks(text, 2)) {
-                textAdd += '\n\n';
-              }
-            }
-
-            text += textAdd;
-          }
+          text += textAdd;
         }
       }
     }
@@ -528,13 +554,12 @@ class Seize {
    * @return {String} title text
    */
   title() {
-    let self = this,
-        node;
-    if (self.doc.title) {
-      return self.doc.title;
+    if (this.doc.title) {
+      return this.doc.title;
     }
 
-    node = self.article.querySelector(contentHeadersSe);
+    const node = this.article.querySelector(contentHeadersSe);
+
     if (node) {
       return node.textContent;
     }
@@ -547,36 +572,36 @@ class Seize {
    * @return {(Node|null)} returns node with article or null
    */
   content() {
-    let self = this,
-        result,
-        i,
-        l;
+    let i;
+    let l;
+    let candidates = {};
+    let candidate = null;
 
-    if (self.article) {
-      return self.article;
+    if (this.article) {
+      return this.article;
     }
 
-    let contentNodes = self.doc.querySelectorAll(contentTextNodesSe),
-        candidates = {},
-        candidate = null;
+    const contentNodes = this.doc.querySelectorAll(contentTextNodesSe);
 
-    for (i = 0, l = contentNodes.length; i < l; i++) {
+    for (i = 0, l = contentNodes.length; i < l; i += 1) {
       if (contentNodes[i] && contentNodes[i].parentNode) {
-        candidate = new Candidate(self, contentNodes[i].parentNode);
+        candidate = new Candidate(this, contentNodes[i].parentNode);
         candidates[candidate.xpath] = candidate;
       }
     }
 
     candidates = utils.values(candidates)
-      .filter(candidate => candidate.isMatchRequirements())
+      .filter(c => c.isMatchRequirements())
       .sort((c1, c2) => c1.totalScore - c2.totalScore);
 
-    if (!candidates.length) { return null; }
+    if (!candidates.length) {
+      return null;
+    }
 
-    self.result = result = candidates[candidates.length - 1];
-    self.article = result.prepareContent();
+    this.result = candidates[candidates.length - 1];
+    this.article = this.result.prepareContent();
 
-    return self.article;
+    return this.article;
   }
 }
 

@@ -1,7 +1,10 @@
 {
   "env": {
     "shared-node-browser": true,
-    "commonjs": true
+    "commonjs": true,
+    "browser": true,
+    "node": true,
+    "mocha": true
   },
   "extends": "airbnb-base",
   "rules": {
@@ -9,6 +12,8 @@
       "warn",
       2,
       { "VariableDeclarator": { "var": 2, "let": 2, "const": 3 } }
-    ]
+    ],
+    "no-loop-func": [0],
+    "no-plusplus": [0]
   }
 }

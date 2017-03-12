@@ -113,8 +113,8 @@ const utils = {
    * @return {String}       XPath string
    */
   getXPath(element) {
-    const pathElements = [];
     let el = element;
+    const pathElements = [el];
 
     for (; el && el.nodeType === 1;) {
       el = el.parentNode;
@@ -122,24 +122,26 @@ const utils = {
     }
 
     return pathElements
-      .reverse()
       .map((e) => {
+        if (!e || !e.tagName) {
+          return '';
+        }
         const tagName = e.tagName;
         let index = 1;
-
         let sibling = e.previousSibling;
 
-        while (sibling != null) {
-          sibling = sibling.previousSibling;
+        while (sibling) {
           if (sibling.tagName === tagName) {
             index += 1;
           }
+          sibling = sibling.previousSibling;
         }
 
         index = index > 1 ? `[${index}]` : '';
 
         return `${tagName.toLowerCase()}${index}`;
       })
+      .reverse()
       .join('/');
   },
 
@@ -400,12 +402,13 @@ class Candidate {
     for (i = 0, l = resolveUrlNodes.length; i < l; i += 1) {
       node = resolveUrlNodes[i];
       attr = elementLinksMap[node.tagName.toLowerCase()];
-      if (attr && attr.length) {
+
+      if (Array.isArray(attr) && attr.length) {
         attr
-          .map(a => ({ a, node }))
+          .map(a => ({ a, n: node }))
           .forEach(setAttribute);
       } else {
-        setAttribute(attr, node);
+        setAttribute({ a: attr, n: node });
       }
     }
 

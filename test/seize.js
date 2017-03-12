@@ -17,6 +17,8 @@ const jsdomOptions = {
   },
 };
 
+let subject;
+
 const testCases = [
   // {
   //   name: 'cnet_list',
@@ -25,6 +27,7 @@ const testCases = [
   // },
   // {
   //   name: 'forbes',
+  /* eslint:disable:max-len */
   //   content: /Blockchain will do for business transactions what([.\s\S]*)Facebook of the transaction universe/g,
   //   url: 'http://www.forbes.com/sites/sap/2016/04/22/blockchain-digital-business-disruptor-or-doomed-to-oblivion/'
   // },
@@ -36,24 +39,24 @@ const testCases = [
   {
     name: 'test_attr',
     content: '<article><p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit</p></article>',
-    title: 'Document'
+    title: 'Document',
   },
   {
     name: 'test_url',
     content: '<article><img src="http://example.com/image.gif" alt=""><a href="http://example.com/cat/"><img src="http://example2.com/image.gif" alt=""></a><img src="http://example.com/cat/111/image.gif" alt=""><a href="http://example.com/cat/post2"><img src="http://example.com/cat/image.gif" alt=""></a><a href="#hash-link">Link content</a> Lorem ipsum dolor sit amet, consectetur adipiscing elit\n    <h1><a href="">JS link text</a>. Common text.</h1><p>Wow! <a href="http://example3.com/">Protocol link text</a>. New paragraph.</p></article>',
     url: 'http://example.com/cat/post',
-    title: 'Document'
+    title: 'Document',
   },
   {
     name: 'test_h',
     content: 'This is a title\n\nContent\n\nNemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit\n\n',
     url: 'http://example.com',
-    title: 'This is a title'
+    title: 'This is a title',
   },
   {
     name: 'test_empty_tags',
     content: '<article><p>Some text</p><br><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit <img src="null.gif"></p><h1>This is a title</h1><p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit</p></article>',
-    title: 'This is a title'
+    title: 'This is a title',
   },
   {
     name: 'test_unacceptable',
@@ -61,97 +64,90 @@ const testCases = [
   },
   {
     name: 'cnet_article',
-    content: /The new dome-shaped Beoplay A1 is not only  the smallest wireless speaker from the Danish company/,
-    url: 'http://www.cnet.com/products/b-o-play-beoplay-a1-portable-bluetooth-speaker/'
+    content: /The new dome-shaped Beoplay A1 is not only {2}the smallest wireless speaker from the Danish company/,
+    url: 'http://www.cnet.com/products/b-o-play-beoplay-a1-portable-bluetooth-speaker/',
   },
   {
     name: 'rbc_article',
     content: /Правительство обнародовало постановление([.\s\S]*)июля 2014 года/g,
-    url: 'http://www.rbc.ru/politics/22/04/2016/5719babc9a79475f3aab6096'
+    url: 'http://www.rbc.ru/politics/22/04/2016/5719babc9a79475f3aab6096',
   },
   {
     name: 'medportal_article',
     content: /В Крыму истек([.\s\S]*)разбирательство уже началось/g,
-    url: 'http://medportal.ru/mednovosti/news/2016/04/21/647insuline/'
+    url: 'http://medportal.ru/mednovosti/news/2016/04/21/647insuline/',
   },
   {
     name: 'novate_article',
     content: /Чтобы куриные ножки получились сочными([.\s\S]*)Подавайте в теплом виде с лимоном/g,
-    url: 'http://www.novate.ru/blogs/220416/36050/'
+    url: 'http://www.novate.ru/blogs/220416/36050/',
   },
   {
     name: 'varlamov_article',
     content: /А-А-А-А-А-А([.\s\S]*)Ох/g,
-    url: 'http://varlamov.ru/1659825.html'
+    url: 'http://varlamov.ru/1659825.html',
   },
   {
     name: 'newsru_article',
     content: /Мурманска в Москву([.\s\S]*)ущерб оценивается/g,
-    url: '' // can't detect (no link on page)
+    url: '', // can't detect (no link on page)
   },
   {
     name: 'lenta_article',
     content: /Банки могут получить разрешение на выдачу потребительских безналичных ([.\s\S]*)общественных организаций/g,
-    url: 'https://lenta.ru/news/2016/04/22/mobilcredits/'
+    url: 'https://lenta.ru/news/2016/04/22/mobilcredits/',
   },
   {
     name: 'iphonehacks',
     content: /Apple co-founder Steve Wozniak believes ([.\s\S]*)via the link below/g,
-    url: 'http://www.iphonehacks.com/2016/04/steve-wozniak-believes-apple-should-pay-same-50-tax-rate-he-does.html'
+    url: 'http://www.iphonehacks.com/2016/04/steve-wozniak-believes-apple-should-pay-same-50-tax-rate-he-does.html',
   },
   {
     name: 'buzzfeed',
     content: /When Tania Rodriguez got dressed for work([.\s\S]*)noting that five planets are in retrograde this month/g,
-    url: 'https://www.buzzfeed.com/tamerragriffin/heres-how-brooklyn-celebrated-princes-life'
+    url: 'https://www.buzzfeed.com/tamerragriffin/heres-how-brooklyn-celebrated-princes-life',
   },
   {
     name: 'sheknows',
     content: /Many of us have woken in the morning to find we([.\s\S]*)ascites and other intestinal tumors/g,
-    url: 'http://www.sheknows.com/health-and-wellness/articles/1117959/causes-of-bloating'
+    url: 'http://www.sheknows.com/health-and-wellness/articles/1117959/causes-of-bloating',
   },
   {
     name: 'carscoops',
     content: /Audi has performed a series of visual and technical updates([.\s\S]*)with deliveries to begin this summer/g,
-    url: 'http://www.carscoops.com/2016/04/audi-updates-a6-and-a7-for-2017my.html'
+    url: 'http://www.carscoops.com/2016/04/audi-updates-a6-and-a7-for-2017my.html',
   },
   {
     name: '3dnews',
     content: /В нынешнем году темпы роста мирового([.\s\S]*)мобильных устройств и платформ\./g,
-    url: 'http://www.3dnews.ru/934306'
+    url: 'http://www.3dnews.ru/934306',
   },
 
 ];
 
-describe('Seize.Candidate', function() {
-  let seize;
-
+describe('Seize.Candidate', () => {
   beforeEach(() => {
     const pageFile = 'test_candidate.html';
     const pagePath = path.join(__dirname, 'pages', pageFile);
     const content = fs.readFileSync(pagePath, 'utf8');
     const window = jsdom(content, jsdomOptions).defaultView;
 
-    seize = new Seize(window.document, {});
+    subject = new Seize(window.document, {});
   });
 
-  it('should throw error (parent is not Seize)', function() {
-    assert.throws(function() {
-      new Seize.Candidate({});
-    }, 'Argument must be Seize');
+  it('should throw error (parent is not Seize)', () => {
+    assert.throws(() => new Seize.Candidate({}), 'Argument must be Seize');
   });
 
-  it('should throw error (node must be defined)', function() {
-    assert.throws(function() {
-      new Seize.Candidate(seize, null);
-    }, 'DOM node must be defined');
+  it('should throw error (node must be defined)', () => {
+    assert.throws(() => new Seize.Candidate(subject, null), 'DOM node must be defined');
   });
-
-
 });
 
 
-describe.only('Seize.utils', function() {
-  let seize, utils, window;
+describe('Seize.utils', () => {
+  let utils;
+  let window;
 
   beforeEach(() => {
     const pageFile = 'test_utils.html';
@@ -160,294 +156,290 @@ describe.only('Seize.utils', function() {
 
     window = jsdom(content, jsdomOptions).defaultView;
 
-    seize = new Seize(window.document, {});
+    subject = new Seize(window.document, {});
 
     utils = Seize.utils;
   });
 
-  describe('#values()', function() {
-    it('should return empty array', function() {
+  describe('#values()', () => {
+    it('should return empty array', () => {
       assert.ok(Array.isArray(utils.values()));
       assert.equal(utils.values().length, 0);
     });
 
-    it('should return array', function() {
-      var test = {
+    it('should return array', () => {
+      const test = {
         a: 1,
         b: 2,
         c: 3,
-        '-': 4
+        '-': 4,
       };
-      var result = utils.values(test);
+      const result = utils.values(test);
       assert.ok(Array.isArray(result));
-      assert.deepEqual(result, [ 1, 2, 3, 4 ]);
+      assert.deepEqual(result, [1, 2, 3, 4]);
     });
   });
 
-  describe('#getXPath()', function() {
-    it('should return empty', function() {
+  describe('#getXPath()', () => {
+    it('should return empty', () => {
       assert.equal(utils.getXPath(), '');
     });
 
-    it('should return empty (null)', function() {
+    it('should return empty (null)', () => {
       assert.equal(utils.getXPath(null), '');
     });
 
-    it('should return empty (elements set)', function() {
-      var testEl = window.document.getElementsByTagName('article');
+    it('should return empty (elements set)', () => {
+      const testEl = window.document.getElementsByTagName('article');
       assert.equal(utils.getXPath(testEl), '');
     });
 
-    it('should return xpath', function() {
-      var testEl = window.document.getElementsByTagName('article')[0];
+    it('should return xpath', () => {
+      const testEl = window.document.getElementsByTagName('article')[0];
       assert.equal(utils.getXPath(testEl), '/html/body/div/article');
     });
   });
 
-  describe('#getXPathScore()', function() {
-    var testEl,
-        xpath1 = '/html/body/div/article',
-        xpath2 = '/html/body/div[11]/article',
-        xpath3 = '/html/body/div[11]/article[2]/div',
-        xpath4 = '/html';
+  describe('#getXPathScore()', () => {
+    const xpath1 = '/html/body/div/article';
+    const xpath2 = '/html/body/div[11]/article';
+    const xpath3 = '/html/body/div[11]/article[2]/div';
+    const xpath4 = '/html';
 
-    it('not a xpath (null)', function() {
+    it('not a xpath (null)', () => {
       assert.equal(utils.getXPathScore(null), null);
     });
 
-    it('not a xpath (object)', function() {
+    it('not a xpath (object)', () => {
       assert.equal(utils.getXPathScore({}), null);
     });
 
-    it('not a xpath', function() {
+    it('not a xpath', () => {
       assert.equal(utils.getXPathScore(), null);
     });
 
-    it('should return score object', function() {
+    it('should return score object', () => {
       assert.ok(utils.getXPathScore(xpath1));
-      assert.deepEqual(utils.getXPathScore(xpath1), {depth:4,distance:1});
+      assert.deepEqual(utils.getXPathScore(xpath1), { depth: 4, distance: 1 });
     });
 
-    it('should return score object', function() {
+    it('should return score object', () => {
       assert.ok(utils.getXPathScore(xpath2));
-      assert.deepEqual(utils.getXPathScore(xpath2), {depth:4,distance:11});
+      assert.deepEqual(utils.getXPathScore(xpath2), { depth: 4, distance: 11 });
     });
 
-    it('should return score object', function() {
+    it('should return score object', () => {
       assert.ok(utils.getXPathScore(xpath3));
-      assert.deepEqual(utils.getXPathScore(xpath3), {depth:5,distance:13});
+      assert.deepEqual(utils.getXPathScore(xpath3), { depth: 5, distance: 13 });
     });
 
-    it('should return score object', function() {
+    it('should return score object', () => {
       assert.ok(utils.getXPathScore(xpath4));
-      assert.deepEqual(utils.getXPathScore(xpath4), {depth:1,distance:1});
+      assert.deepEqual(utils.getXPathScore(xpath4), { depth: 1, distance: 1 });
     });
-
   });
 });
 
-describe('Seize', function() {
-
-  it('should throw error (empty argument)', function() {
-    assert.throws(function() {
-      new Seize();
+describe('Seize', () => {
+  it('should throw error (empty argument)', () => {
+    assert.throws(() => {
+      subject = new Seize();
     }, /Argument must be/);
   });
 
-  it('should throw error (string argument)', function() {
-    assert.throws(function() {
-      new Seize(' ');
+  it('should throw error (string argument)', () => {
+    assert.throws(() => {
+      subject = new Seize(' ');
     }, /querySelectorAll|querySelector/);
   });
 
-  it('should throw error (array argument)', function() {
-    assert.throws(function() {
-      new Seize([]);
+  it('should throw error (array argument)', () => {
+    assert.throws(() => {
+      subject = new Seize([]);
     }, /querySelectorAll|querySelector/);
   });
 
-  describe('Resolve url', function () {
-    it('relative url', function() {
-      var resolveUrl = Seize.prototype.resolveUrl;
-      var result = resolveUrl.call({
-        url: 'http://example.com/123/'
+  describe('Resolve url', () => {
+    it('relative url', () => {
+      const resolveUrl = Seize.prototype.resolveUrl;
+      const result = resolveUrl.call({
+        url: 'http://example.com/123/',
       }, 'image.jpg');
       assert.equal('http://example.com/123/image.jpg', result);
     });
 
-    it('absolute url', function() {
-      var resolveUrl = Seize.prototype.resolveUrl;
-      var result = resolveUrl.call({
-        url: 'http://example.com/123/'
+    it('absolute url', () => {
+      const resolveUrl = Seize.prototype.resolveUrl;
+      const result = resolveUrl.call({
+        url: 'http://example.com/123/',
       }, '/image.jpg');
       assert.equal('http://example.com/image.jpg', result);
     });
 
-    it('url from another source', function() {
-      var resolveUrl = Seize.prototype.resolveUrl;
-      var result = resolveUrl.call({
-        url: 'http://example.com/123/'
+    it('url from another source', () => {
+      const resolveUrl = Seize.prototype.resolveUrl;
+      const result = resolveUrl.call({
+        url: 'http://example.com/123/',
       }, 'http://example2.com/image.jpg');
       assert.equal('http://example2.com/image.jpg', result);
     });
 
-    it('javascript url', function() {
-      var resolveUrl = Seize.prototype.resolveUrl;
-      var result = resolveUrl.call({
-        url: 'http://example.com/123/'
+    it('javascript url', () => {
+      const resolveUrl = Seize.prototype.resolveUrl;
+      /* eslint:disable:no-script-url */
+      const result = resolveUrl.call({
+        url: 'http://example.com/123/',
       }, 'javascript:alert("Yeah!")');
       assert.equal('', result);
+      /* eslint:enable:no-script-url */
     });
   });
 
-  testCases.forEach(function(test) {
-    var pageFile = test.name + '.html',
-        pagePath = path.join(__dirname, 'pages', pageFile),
+  testCases.forEach((test) => {
+    describe(`Run ${test.name}`, function testCasesRunner() {
+      this.slow(500);
+      let pageFile;
+      let pagePath;
+      let testContent;
+      let content;
+      let window;
+
+
+      beforeEach(() => {
+        pageFile = `${test.name}.html`;
+        pagePath = path.join(__dirname, 'pages', pageFile);
         testContent = test.content;
 
-    var content = fs.readFileSync(pagePath, 'utf8'),
-        window = jsdom(content, jsdomOptions).defaultView,
-        seize;
+        content = fs.readFileSync(pagePath, 'utf8');
+        window = jsdom(content, jsdomOptions).defaultView;
 
-    describe('Run ' + test.name, function() {
-      this.slow(500);
-
-      it('should init without errors', function() {
-        seize = new Seize(window.document, {
+        subject = new Seize(window.document, {
           // log: console.log
         });
       });
 
-      it('sould extract content', function() {
-        if ( typeof testContent == 'string' ) {
-          if ( testContent[0] == '<' ) {
-            assert.equal( testContent, seize.content().outerHTML );
+      it('sould extract content', () => {
+        if (typeof testContent === 'string') {
+          if (testContent[0] === '<') {
+            assert.equal(testContent, subject.content().outerHTML);
           } else {
-            assert.equal( testContent, seize.text() );
+            assert.equal(testContent, subject.text());
           }
-        } else if ( testContent instanceof RegExp ) {
+        } else if (testContent instanceof RegExp) {
           // console.log(seize.text());
-          assert.ok( testContent.test(seize.text()) );
+          assert.ok(testContent.test(subject.text()));
         } else {
-          assert.equal( testContent, seize.content() );
+          assert.equal(testContent, subject.content());
         }
       });
 
-      if ( test.title )
-        it('sould detect page title', function() {
-          assert.equal(test.title, seize.title());
+      if (test.title) {
+        it('sould detect page title', () => {
+          assert.equal(test.title, subject.title());
         });
+      }
 
-      if ( test.url )
-        it('should detect page link', function() {
-          assert.equal(test.url, seize.url);
+      if (test.url) {
+        it('should detect page link', () => {
+          assert.equal(test.url, subject.url);
         });
+      }
 
-      after(function() {
-        seize = null;
+      afterEach(() => {
+        subject = null;
       });
     });
-
   });
 
   // return;
 
-  var text2array = function(text) {
+  function text2array(text) {
     return text
       .split('\n\n')
-      .map(function(line) {
-        return line.trim().replace(/\n[\s\t]*/g, ' ');
-      })
-      .reduce(function(lines, line) {
-        if ( line )
-          lines.push(line);
+      .map(line => line.trim().replace(/\n[\s\t]*/g, ' '))
+      .reduce((lines, line) => {
+        if (line) { lines.push(line); }
         return lines;
       }, []);
-  };
+  }
 
-  describe('Bulk test', function() {
-    var inputFileList  = fs.readdirSync(bulkInputPath),
-        resultFileList = fs.readdirSync(bulkResultPath),
-        files;
+  describe('Bulk test', () => {
+    const inputFileList = fs.readdirSync(bulkInputPath);
+    const resultFileList = fs.readdirSync(bulkResultPath);
 
-    files = inputFileList.map(function(file) {
-      var basename = file.split('.')[0];
-      var txtname  = basename + '.txt';
+    const files = inputFileList
+      .map((file) => {
+        const basename = file.split('.')[0];
+        const txtname = `${basename}.txt`;
 
-      if ( resultFileList.indexOf(txtname) === -1 )
-        txtname = null;
-      return [ file, txtname ];
-    })
-    .filter(function(file) {
-      return file[0].indexOf('.html') > -1;
-    });
+        if (resultFileList.indexOf(txtname) === -1) {
+          return [file, null];
+        }
+
+        return [file, txtname];
+      })
+      .filter(file => file[0].indexOf('.html') > -1);
 
     // files = files.slice(5, 6);
 
-    files.forEach(function(paths) {
-      var inputPath  = bulkInputPath + paths[0];
-      var resultPath = null;
+    files.forEach((paths) => {
+      const inputPath = bulkInputPath + paths[0];
+      let resultPath = null;
+      let result;
 
-      if ( paths[1] )
-        resultPath = bulkResultPath + paths[1];
+      if (paths[1]) { resultPath = bulkResultPath + paths[1]; }
 
-      it('should meet ' + paths[0] + ' <-> ' + paths[1], function() {
+      it(`should meet ${paths[0]} <-> ${paths[1]}`, function bulkTestRunner() {
         this.slow(500);
 
-        var input      = fs.readFileSync(inputPath, 'utf8');
-        var resultHtml = resultPath ? fs.readFileSync(resultPath, 'utf8') : null;
-        var testDoc    = jsdom(input, jsdomOptions).defaultView;
-        var resultText = '';
-        var testText   = '';
-        var resultArray = [];
-        var seize = new Seize(testDoc.document);
+        const input = fs.readFileSync(inputPath, 'utf8');
+        const testDoc = jsdom(input, jsdomOptions).defaultView;
+        let resultHtml = resultPath ? fs.readFileSync(resultPath, 'utf8') : null;
+        let resultText = '';
+        let resultArray = [];
+        subject = new Seize(testDoc.document);
 
-        if ( resultPath && resultHtml ) {
+        if (resultPath && resultHtml) {
           resultHtml = resultHtml
             .replace(/^URL:\s+(.*)\n/i, '')
             .replace(/<h>/g, '<h1>')
             .replace(/<l>/g, '<li>')
             .split('\n\n')
-            .map(function(line) {
-              return line
+            .map(line => line
                 .replace(/\n/g, ' ')
                 .replace(/<([0-9a-z]+)>(.*)/g, '<$1>$2</$1>')
-                .replace(/\s+/g, ' ');
-            })
+                .replace(/\s+/g, ' '))
             .join('')
             .replace(/[\n\r]/g, '');
-          resultHtml = '<html><head></head><body><div>' + resultHtml + '</div></body></html>';
+          resultHtml = `<html><head></head><body><div>${resultHtml}</div></body></html>`;
           result = jsdom(resultHtml, jsdomOptions).defaultView;
-          resultText = seize.text(result.document.body);
+          resultText = subject.text(result.document.body);
         }
 
-        testText    = seize.text();
-        testArray   = text2array(testText);
+        const testText = subject.text();
+        const testArray = text2array(testText);
         resultArray = text2array(resultText);
 
-        if ( !resultHtml ) {
-          seize.content();
-          assert.equal(seize.result, null);
+        if (!resultHtml) {
+          subject.content();
+          assert.equal(subject.result, null);
           return;
         }
 
-        var score1 = testArray.reduce(function(memo, item, index) {
-          if ( resultArray.indexOf(item) >= index )
-            memo++;
+        const score1 = testArray.reduce((memo, item, index) => {
+          if (resultArray.indexOf(item) >= index) { return memo + 1; }
           return memo;
         }, 0);
 
-        var score2 = resultArray.reduce(function(memo, item, index) {
-          if ( testArray.indexOf(item) >= index )
-            memo++;
+        const score2 = resultArray.reduce((memo, item, index) => {
+          if (testArray.indexOf(item) >= index) { return memo + 1; }
           return memo;
         }, 0);
 
-        var rate = (score1 + score2) / (resultArray.length + testArray.length);
+        const rate = (score1 + score2) / (resultArray.length + testArray.length);
 
         assert.approximately(rate, 0.9, 0.1);
       });
     });
-
   });
 });

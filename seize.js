@@ -45,7 +45,7 @@ const defaultNodeScore = 1;
 
 const defaultOptions = {
   /**
-   * Needs to resolve relative links. If url is empty it will try to determine automaticly.
+   * Needs to resolve relative links. If url is empty it will try to detect automatically.
    * @type {String}
    */
   url: '',
@@ -55,7 +55,7 @@ const defaultOptions = {
    */
   log: null,
   /**
-   * Minimum size of images wich should be in content.
+   * Minimum size of images which should be in content.
    * Accepts `{ height: {Number}, width: {Number} }` object or false.
    * Height or width might be 0 to ignore dimension
    * @type {(Object|false)}
@@ -243,7 +243,11 @@ class Candidate {
     this.textLength = this.seize.text(this.node).length;
     this.textScore = this.getTextScore();
 
-    this.totalScore = ((this.textLength / this.textDensity) * this.textScore) ** this.nodeScore;
+    this.totalScore = this.getTotalScore();
+  }
+
+  getTotalScore() {
+    return ((this.textLength / this.textDensity) * this.textScore) ** this.nodeScore;
   }
 
   isMatchStandart() {
@@ -338,13 +342,11 @@ class Candidate {
     const self = this;
     const contentNodes = self.node.childNodes;
     let score = 1;
-    let next;
-    let node;
 
     for (let i = 0, l = contentNodes.length; i < l; i += 1) {
-      node = contentNodes[i];
-      next = node.nextSibling;
-      if (node && node.nextSibling) {
+      const node = contentNodes[i];
+      const next = node.nextSibling;
+      if (node && next) {
         if (next.nodeType === 3 || (next.nodeType === 1 && next.matches(contentTextNodesSe))) {
           score += textDensityPenalty;
         } else {

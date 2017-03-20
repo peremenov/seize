@@ -20,22 +20,6 @@ const jsdomOptions = {
 let subject;
 
 const testCases = [
-  // {
-  //   name: 'cnet_list',
-  //   content: null,
-  //   url: 'http://www.cnet.com/topics/appliances/how-to/'
-  // },
-  // {
-  //   name: 'forbes',
-  /* eslint:disable:max-len */
-  //   content: /Blockchain will do for business transactions what([.\s\S]*)Facebook of the transaction universe/g,
-  //   url: 'http://www.forbes.com/sites/sap/2016/04/22/blockchain-digital-business-disruptor-or-doomed-to-oblivion/'
-  // },
-  // {
-  //   name: 'cnet_main',
-  //   content: /Latest stories \n\nB&O Play\'s Beoplay A1 mini Bluetooth([.\s\S]*)/g,
-  //   url: 'http://www.cnet.com/'
-  // },
   {
     name: 'test_attr',
     content: '<article><p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit</p></article>',
@@ -241,26 +225,28 @@ describe('Seize.utils', () => {
 });
 
 describe('Seize', () => {
-  it('should throw error (empty argument)', () => {
-    assert.throws(() => {
-      subject = new Seize();
-    }, /Argument must be/);
+  describe('instance', () => {
+    it('should throw error (empty argument)', () => {
+      assert.throws(() => {
+        subject = new Seize();
+      }, /Argument must be/);
+    });
+
+    it('should throw error (string argument)', () => {
+      assert.throws(() => {
+        subject = new Seize(' ');
+      }, /querySelectorAll|querySelector/);
+    });
+
+    it('should throw error (array argument)', () => {
+      assert.throws(() => {
+        subject = new Seize([]);
+      }, /querySelectorAll|querySelector/);
+    });
   });
 
-  it('should throw error (string argument)', () => {
-    assert.throws(() => {
-      subject = new Seize(' ');
-    }, /querySelectorAll|querySelector/);
-  });
-
-  it('should throw error (array argument)', () => {
-    assert.throws(() => {
-      subject = new Seize([]);
-    }, /querySelectorAll|querySelector/);
-  });
-
-  describe('Resolve url', () => {
-    it('relative url', () => {
+  describe('URL resolver', () => {
+    it('should resolve relative url', () => {
       const resolveUrl = Seize.prototype.resolveUrl;
       const result = resolveUrl.call({
         url: 'http://example.com/123/',
@@ -268,7 +254,7 @@ describe('Seize', () => {
       assert.equal('http://example.com/123/image.jpg', result);
     });
 
-    it('absolute url', () => {
+    it('should resolve absolute url', () => {
       const resolveUrl = Seize.prototype.resolveUrl;
       const result = resolveUrl.call({
         url: 'http://example.com/123/',
@@ -276,7 +262,7 @@ describe('Seize', () => {
       assert.equal('http://example.com/image.jpg', result);
     });
 
-    it('url from another source', () => {
+    it('should resolve url from another source', () => {
       const resolveUrl = Seize.prototype.resolveUrl;
       const result = resolveUrl.call({
         url: 'http://example.com/123/',
@@ -284,19 +270,17 @@ describe('Seize', () => {
       assert.equal('http://example2.com/image.jpg', result);
     });
 
-    it('javascript url', () => {
+    it('should resolve javascript url', () => {
       const resolveUrl = Seize.prototype.resolveUrl;
-      /* eslint:disable:no-script-url */
       const result = resolveUrl.call({
         url: 'http://example.com/123/',
       }, 'javascript:alert("Yeah!")');
       assert.equal('', result);
-      /* eslint:enable:no-script-url */
     });
   });
 
   testCases.forEach((test) => {
-    describe(`Run ${test.name}`, function testCasesRunner() {
+    describe.only(`Run ${test.name}`, function testCasesRunner() {
       this.slow(500);
       let pageFile;
       let pagePath;
@@ -318,7 +302,7 @@ describe('Seize', () => {
         });
       });
 
-      it('sould extract content', () => {
+      it('should extract content', () => {
         if (typeof testContent === 'string') {
           if (testContent[0] === '<') {
             assert.equal(testContent, subject.content().outerHTML);
@@ -334,7 +318,7 @@ describe('Seize', () => {
       });
 
       if (test.title) {
-        it('sould detect page title', () => {
+        it('should detect page title', () => {
           assert.equal(test.title, subject.title());
         });
       }

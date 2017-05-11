@@ -229,7 +229,12 @@ function shouldAddBreaks(text, count) {
  */
 class Candidate {
   constructor(seize, node) {
-    if (!node) { throw new Error('DOM node must be defined'); }
+    if (!(seize instanceof Seize)) {
+      throw new Error('Argument must be Seize');
+    }
+    if (!node) {
+      throw new Error('DOM node must be defined');
+    }
 
     this.node = node;
     this.seize = seize;

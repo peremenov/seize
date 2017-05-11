@@ -1,6 +1,6 @@
 const assert = require('chai').assert;
 const Seize = require('..');
-const jsdom = require('jsdom').jsdom;
+const { JSDOM } = require('jsdom');
 const path = require('path');
 const fs = require('fs');
 
@@ -103,32 +103,27 @@ const testCases = [
 ];
 
 describe('Pages', () => {
-  let subject;
-  let pageFile;
-  let pagePath;
-  let testContent;
-  let content;
-  let window;
-
-  afterEach(() => {
-    subject = null;
-  });
-
-  beforeEach(() => {
-    pageFile = `${test.name}.html`;
-    pagePath = path.join(__dirname, 'pages', pageFile);
-    testContent = test.content;
-
-    content = fs.readFileSync(pagePath, 'utf8');
-    window = jsdom(content, jsdomOptions).defaultView;
-
-    subject = new Seize(window.document, {
-      // log: console.log
-    });
-  });
-
   testCases.forEach((test) => {
-    describe.only(`Run ${test.name}`, function testCasesRunner() {
+    describe(`Run ${test.name}`, function testCasesRunner() {
+      let subject;
+      let pageFile;
+      let pagePath;
+      let testContent;
+      let content;
+      let dom;
+
+      beforeAll(() => {
+        pageFile = `${test.name}.html`;
+        pagePath = path.join(__dirname, 'pages', pageFile);
+        testContent = test.content;
+
+        content = fs.readFileSync(pagePath, 'utf8');
+        dom = new JSDOM(content, jsdomOptions);
+
+        subject = new Seize(dom.window.document, {
+          // log: console.log
+        });
+      });
 
       it('should extract content', () => {
         if (typeof testContent === 'string') {

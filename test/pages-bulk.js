@@ -1,6 +1,6 @@
 const assert = require('chai').assert;
 const Seize = require('..');
-const jsdom = require('jsdom').jsdom;
+const { JSDOM } = require('jsdom');
 const fs = require('fs');
 
 const bulkPath = `${__dirname}/pages-bulk`;
@@ -56,11 +56,11 @@ describe('Bulk test', () => {
 
     it(`should meet ${paths[0]} <-> ${paths[1]}`, function bulkTestRunner() {
       const input = fs.readFileSync(inputPath, 'utf8');
-      const testDoc = jsdom(input, jsdomOptions).defaultView;
+      const doc = new JSDOM(input, jsdomOptions);
       let resultHtml = resultPath ? fs.readFileSync(resultPath, 'utf8') : null;
       let resultText = '';
       let resultArray = [];
-      subject = new Seize(testDoc.document);
+      subject = new Seize(doc.window.document);
 
       if (resultPath && resultHtml) {
         resultHtml = resultHtml
@@ -75,8 +75,8 @@ describe('Bulk test', () => {
           .join('')
           .replace(/[\n\r]/g, '');
         resultHtml = `<html><head></head><body><div>${resultHtml}</div></body></html>`;
-        result = jsdom(resultHtml, jsdomOptions).defaultView;
-        resultText = subject.text(result.document.body);
+        result = new JSDOM(resultHtml, jsdomOptions);
+        resultText = subject.text(result.window.document.body);
       }
 
       const testText = subject.text();

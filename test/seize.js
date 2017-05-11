@@ -1,5 +1,5 @@
 const Seize = require('..');
-const jsdom = require('jsdom').jsdom;
+const { JSDOM } = require('jsdom');
 const assert = require('chai').assert;
 const path = require('path');
 const fs = require('fs');
@@ -18,9 +18,8 @@ describe('Seize.Candidate', () => {
     const pageFile = 'test_candidate.html';
     const pagePath = path.join(__dirname, 'pages', pageFile);
     const content = fs.readFileSync(pagePath, 'utf8');
-    const window = jsdom(content, jsdomOptions).defaultView;
-
-    subject = new Seize(window.document, {});
+    const dom = new JSDOM(content, jsdomOptions);
+    subject = new Seize(dom.window.document, {});
   });
 
   it('should throw error (parent is not Seize)', () => {
@@ -35,16 +34,15 @@ describe('Seize.Candidate', () => {
 
 describe('Seize.utils', () => {
   let utils;
-  let window;
+  let dom;
 
   beforeEach(() => {
     const pageFile = 'test_utils.html';
     const pagePath = path.join(__dirname, 'pages', pageFile);
     const content = fs.readFileSync(pagePath, 'utf8');
 
-    window = jsdom(content, jsdomOptions).defaultView;
-
-    subject = new Seize(window.document, {});
+    dom = new JSDOM(content, jsdomOptions);
+    subject = new Seize(dom.window.document, {});
 
     utils = Seize.utils;
   });
@@ -83,7 +81,7 @@ describe('Seize.utils', () => {
     });
 
     it('should return xpath', () => {
-      const testEl = window.document.getElementsByTagName('article')[0];
+      const testEl = dom.window.document.getElementsByTagName('article')[0];
       assert.equal(utils.getXPath(testEl), '/html/body/div/article');
     });
   });

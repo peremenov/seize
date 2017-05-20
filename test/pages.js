@@ -104,7 +104,7 @@ const testCases = [
 
 describe('Pages', () => {
   testCases.forEach((test) => {
-    describe(`Run ${test.name}`, function testCasesRunner() {
+    describe(`Run ${test.name}`, () => {
       let subject;
       let pageFile;
       let pagePath;
@@ -151,7 +151,6 @@ describe('Pages', () => {
           assert.equal(test.url, subject.url);
         });
       }
-
     });
   });
 });

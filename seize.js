@@ -137,9 +137,9 @@ const utils = {
           sibling = sibling.previousSibling;
         }
 
-        index = index > 1 ? `[${index}]` : '';
+        const indexName = index > 1 ? `[${index}]` : '';
 
-        return `${tagName.toLowerCase()}${index}`;
+        return `${tagName.toLowerCase()}${indexName}`;
       })
       .reverse()
       .join('/');
@@ -239,6 +239,7 @@ class Candidate {
     this.node = node;
     this.seize = seize;
     this.doc = seize.doc;
+    this.textNodes = this.node.querySelectorAll(contentTextNodesSe);
 
     this.xpath = utils.getXPath(this.node);
 
@@ -330,22 +331,20 @@ class Candidate {
   }
 
   getTextScore() {
-    const self = this;
-    const textNodes = self.node.querySelectorAll(contentTextNodesSe);
+    const textNodes = this.textNodes;
     let score = 0;
 
     for (let i = 0, l = textNodes.length; i < l; i += 1) {
       if (textNodes[i].childNodes.length) {
-        score += self.getTextNodeScore(textNodes[i].childNodes[0]);
+        score += this.getTextNodeScore(textNodes[i].childNodes[0]);
       }
     }
 
-    return score / self.textLength;
+    return score / this.textLength;
   }
 
   getTextDensity() {
-    const self = this;
-    const contentNodes = self.node.childNodes;
+    const contentNodes = this.node.childNodes;
     let score = 1;
 
     for (let i = 0, l = contentNodes.length; i < l; i += 1) {
@@ -452,6 +451,7 @@ class Seize {
     }
 
     this.doc = doc;
+    this.contentNodes = this.doc.querySelectorAll(contentTextNodesSe);
     this.options = utils.extend({}, defaultOptions, options);
     this.url = this.options.url || this.getPageUrl() || '';
     this.article = this.content();
@@ -587,11 +587,11 @@ class Seize {
     let candidates = {};
     let candidate = null;
 
+    const contentNodes = this.contentNodes;
+
     if (this.article) {
       return this.article;
     }
-
-    const contentNodes = this.doc.querySelectorAll(contentTextNodesSe);
 
     for (i = 0, l = contentNodes.length; i < l; i += 1) {
       if (contentNodes[i] && contentNodes[i].parentNode) {

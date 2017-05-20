@@ -32,7 +32,7 @@ describe('Bulk test', () => {
 
   let subject;
 
-  let files = inputFileList
+  const files = inputFileList
     .map((file) => {
       const basename = file.split('.')[0];
       const txtname = `${basename}.txt`;
@@ -45,16 +45,16 @@ describe('Bulk test', () => {
     })
     .filter(file => file[0].indexOf('.html') > -1);
 
-  files = files.slice(5, 6);
-
   files.forEach((paths) => {
     const inputPath = bulkInputPath + paths[0];
     let resultPath = null;
     let result;
 
-    if (paths[1]) { resultPath = bulkResultPath + paths[1]; }
+    if (paths[1]) {
+      resultPath = bulkResultPath + paths[1];
+    }
 
-    it(`should meet ${paths[0]} <-> ${paths[1]}`, function bulkTestRunner() {
+    it(`should meet ${paths[0]} <-> ${paths[1]}`, () => {
       const input = fs.readFileSync(inputPath, 'utf8');
       const doc = new JSDOM(input, jsdomOptions);
       let resultHtml = resultPath ? fs.readFileSync(resultPath, 'utf8') : null;
